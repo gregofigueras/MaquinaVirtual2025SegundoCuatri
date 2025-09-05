@@ -69,21 +69,104 @@ void ProcesarInstrucciones(int Memoria[N], int Registros[32], short int TablaSeg
         printf("Disassembler mode not implemented yet.\n");
     }
 
-    for (;Registros[3]<TablaSegmentos[0][1];) {
-        aux=Memoria[Registros[3]];
-        Set_Instruccion(aux,Registros);
-        Registros[3]++;
-        Set_Operando(Memoria,Registros);
+    for (;direccionFisica<TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][1];) {
+        aux=Memoria[direccionFisica];
+        Set_Instruccion(aux,Registros);  // Mueve IP
+        Mover_Ip(Registros);
+        direccionFisica++;
+        Set_Operando(Memoria,Registros,&direccionFisica);
+        // Llama Mnemonicos
+
+        switch (Registros[4] & 0x000000FF) {
+            case 0:
+                SYS(Memoria,Registros,TablaSegmentos);
+                break;
+            case 1:
+                JMP(Memoria,Registros,TablaSegmentos);
+                break;
+            case 2:
+                JZ(Memoria,Registros,TablaSegmentos);
+                break;
+            case 3:
+                JP(Memoria,Registros,TablaSegmentos);
+                break;
+            case 4:
+                JN(Memoria,Registros,TablaSegmentos);
+                break;
+            case 5:
+                JNZ(Memoria,Registros,TablaSegmentos);
+                break;
+            case 6:
+                JNP(Memoria,Registros,TablaSegmentos);
+                break;
+            case 7:
+                JNN(Memoria,Registros,TablaSegmentos);
+                break;
+            case 8:
+                NOT(Memoria,Registros,TablaSegmentos);
+                break;
+            case 15:
+                STOP();
+             break;
+            case 16:
+                MOV(Memoria,Registros,TablaSegmentos);
+                break;
+            case 17:
+                ADD(Memoria,Registros,TablaSegmentos);
+                break;
+            case 18:
+                SUB(Memoria,Registros,TablaSegmentos);
+                break;
+            case 19:
+                MUL(Memoria,Registros,TablaSegmentos);
+                break;
+            case 20:
+                DIV(Memoria,Registros,TablaSegmentos);
+                break;
+            case 21:
+                CMP(Memoria,Registros,TablaSegmentos);
+                break;
+            case 22:
+                SHL(Memoria,Registros,TablaSegmentos);
+                break;
+            case 23:
+                SHR(Memoria,Registros,TablaSegmentos);
+                break;
+            case 24:
+                SAR(Memoria,Registros,TablaSegmentos);
+                break;
+            case 25:
+                AND(Memoria,Registros,TablaSegmentos);
+                break;
+            case 26:
+                OR(Memoria,Registros,TablaSegmentos);
+                break;
+            case 27:
+                XOR(Memoria,Registros,TablaSegmentos);
+                break;
+            case 28:
+                SWAP(Memoria,Registros,TablaSegmentos);
+                break;
+            case 29:
+                LDL(Memoria,Registros,TablaSegmentos);
+                break;
+            case 30:
+                LDH(Memoria,Registros,TablaSegmentos);
+                break;
+                case 31:
+                RND(Memoria,Registros,TablaSegmentos);
+                break;
 
 
+        }
     }
 
 }
 
 void Set_Instruccion(int Instruccion, int Registros[32]){
-    Registros[4]= Instruccion & 0x1F;
+    Registros[4]= Instruccion & 0x1F; // Carga el OPC
 
-    Instruccion = Instruccion >> 4;
+    Instruccion = Instruccion >> 4;   //Carga los tipos de los OP1 y OP2
     if (Instruccion % 2) { // 2 Operandos
         Registros[5]= (Instruccion & 0x3) << 24;
         Registros[6]= (Instruccion & 0xC) << 24;
@@ -106,12 +189,22 @@ void Set_Operando(int Memoria[N], int Registros[32]){
     }
     else {
         if (Registros[4] <= 8) {  //1 operando
-
+            Set_OperandoValor(Memoria,&Registros[5],direccionFisica);
         }
         else
             if (Registros[4] == 15) { // 0 Operandos
-
+                //No hace nada
             }
     }
 
 }
+
+void Set_OperandoValor(int Memoria[N],int *Registro, int *direccionFisica) {
+    if (*Registro == 0x01000000) // Registros
+        *Registro= *Registro | Memoria[*direccionFisica];
+    else if (*Registro==0x02000000) // Inmediato
+        *Registro= *Registro | ((Memoria[*direccionFisica]<<8) | Memoria[++(*direccionFisica)]);
+    else if (*Registro==0x03000000) // Memoria
+        *Registro= *Registro | ((Memoria[*direccionFisica]<<16) | (Memoria[++(*direccionFisica)]<<8) | Memoria[++(*direccionFisica)]);
+}
+
