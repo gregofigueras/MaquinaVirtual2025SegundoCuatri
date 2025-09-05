@@ -1,0 +1,117 @@
+#include <stdbool.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define N 16384
+
+void CargarVmx(char NombreArchivo[10], int Memoria[N], int Registros[32],  short int TablaSegmentos[8][2]);
+void ProcesarInstrucciones(int Memoria[N], int Registros[32], short int TablaSegmentos[8][2], bool Dissasembler);
+void Set_Instruccion(int Instruccion, int Registros[32]);
+void Set_Operando(int Memoria[N], int Registros[32]);
+
+int main(int argc,char * argv[]) {
+    unsigned char Memoria[N];
+    short int TablaSegmentos[8][2];
+    int Registros[32];
+    bool Dissasembler=false;
+    char DireccionVmx[10];
+
+    for (int i=0;i<argc;i++){
+        if (strcmp(".vmx", strrchr(argv[i],'.'))==0){
+            strcpy(DireccionVmx,argv[i]);
+        }
+        if (strcmp(argv[i],"-d")==0)
+            Dissasembler=true;
+    }
+    CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos);
+
+    return 0;
+}
+
+void CargarVmx(char NombreArchivo[10], int Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {
+    FILE *Archivo;
+    int i = 0;
+    Archivo = fopen(NombreArchivo, "rb");
+    if (Archivo == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return;
+    }
+
+    fseek(Archivo,0,SEEK_END);
+    int TamanoArchivo= ftell(Archivo);
+    unsigned char data[TamanoArchivo];
+    fseek(Archivo,0,SEEK_SET);
+
+    fclose(Archivo);
+    int TamanoCs= (data[6] << 8) | data[7];
+    TablaSegmentos[0][0]=0x0000;
+    TablaSegmentos[0][1]=TamanoCs;
+    TablaSegmentos[1][0]=TamanoCs;
+    TablaSegmentos[1][1]=N-TamanoCs;
+
+
+
+    Registros[26]=0x00000000; // CS
+    Registros[3]= Registros[26]; // IP = CS
+    Registros[27]=0x00010000; // DS
+    int j=0;
+    for (i=18; i<TamanoArchivo;i++){
+        Memoria[j]=data[i];
+        j++;
+    }
+
+}
+
+void ProcesarInstrucciones(int Memoria[N], int Registros[32], short int TablaSegmentos[8][2], bool Dissasembler) {;
+    int aux;
+    int direccionFisica;
+    if (Dissasembler) {
+        printf("Disassembler mode not implemented yet.\n");
+    }
+
+    for (;Registros[3]<TablaSegmentos[0][1];) {
+        aux=Memoria[Registros[3]];
+        Set_Instruccion(aux,Registros);
+        Registros[3]++;
+        Set_Operando(Memoria,Registros);
+
+
+    }
+
+}
+
+void Set_Instruccion(int Instruccion, int Registros[32]){
+    Registros[4]= Instruccion & 0x1F;
+
+    Instruccion = Instruccion >> 4;
+    if (Instruccion % 2) { // 2 Operandos
+        Registros[5]= (Instruccion & 0x3) << 24;
+        Registros[6]= (Instruccion & 0xC) << 24;
+    }
+    else if (Instruccion != 0) { // 1 Operando
+        Registros[5]= (Instruccion & 0xC) <<24;
+    }
+
+}
+
+void Set_Operando(int Memoria[N], int Registros[32]){
+    if (Registros[4] >= 16) {  //2 operandos
+        if (Registros[6]==0x01000000) // Registros
+            Registros[6]= Registros[6] | Memoria[Registros[3]];
+        else if (Registros[6]==0x02000000) // Inmediato
+            Registros[6]= Registros[6] | ((Memoria[Registros[3]]<<8) | Memoria[Registros[3]+1]);
+        else if (Registros[6]==0x03000000) // Memoria
+            Registros[6]= Registros[6] | ((Memoria[Registros[3]]<<16) | (Memoria[Registros[3]+1]<<8) | Memoria[Registros[3]+2]);
+       if (Registros[5])
+    }
+    else {
+        if (Registros[4] <= 8) {  //1 operando
+
+        }
+        else
+            if (Registros[4] == 15) { // 0 Operandos
+
+            }
+    }
+
+}
