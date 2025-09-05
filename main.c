@@ -2,12 +2,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <C:\Users\marti\CLionProjects\MaquinaVirtual2025SegundoCuatri\Mnemonicos.h>
 #define N 16384
 
 void CargarVmx(char NombreArchivo[10], int Memoria[N], int Registros[32],  short int TablaSegmentos[8][2]);
 void ProcesarInstrucciones(int Memoria[N], int Registros[32], short int TablaSegmentos[8][2], bool Dissasembler);
+void Imprimir_Dissasembler(int Memoria[N], short int TablaSegmentos[8][2]);
 void Set_Instruccion(int Instruccion, int Registros[32]);
-void Set_Operando(int Memoria[N], int Registros[32]);
+void Mover_Ip(int Registros[32]);
+void Set_Operando(int Memoria[N], int Registros[32], int *direccionFisica);
+void Set_OperandoValor(int Memoria[N],int *Registro, int *direccionFisica);
+
 
 int main(int argc,char * argv[]) {
     unsigned char Memoria[N];
@@ -64,9 +69,9 @@ void CargarVmx(char NombreArchivo[10], int Memoria[N], int Registros[32], short 
 
 void ProcesarInstrucciones(int Memoria[N], int Registros[32], short int TablaSegmentos[8][2], bool Dissasembler) {;
     int aux;
-    int direccionFisica;
+    int direccionFisica=TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][0];
     if (Dissasembler) {
-        printf("Disassembler mode not implemented yet.\n");
+        Imprimir_Dissasembler(Memoria,TablaSegmentos);
     }
 
     for (;direccionFisica<TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][1];) {
@@ -170,22 +175,24 @@ void Set_Instruccion(int Instruccion, int Registros[32]){
     if (Instruccion % 2) { // 2 Operandos
         Registros[5]= (Instruccion & 0x3) << 24;
         Registros[6]= (Instruccion & 0xC) << 24;
+
+        // MOVER IP
+        Registros[3]+= 1 + ((Registros[5] & 0xFF000000)>>24) + ((Registros[6] & 0xFF000000)>>24);
     }
     else if (Instruccion != 0) { // 1 Operando
         Registros[5]= (Instruccion & 0xC) <<24;
+        // MOVER IP
+        Registros[3]+= 1 + ((Registros[5] & 0xFF000000)>>24);
     }
 
 }
 
-void Set_Operando(int Memoria[N], int Registros[32]){
+
+void Set_Operando(int Memoria[N], int Registros[32], int *direccionFisica){
+
     if (Registros[4] >= 16) {  //2 operandos
-        if (Registros[6]==0x01000000) // Registros
-            Registros[6]= Registros[6] | Memoria[Registros[3]];
-        else if (Registros[6]==0x02000000) // Inmediato
-            Registros[6]= Registros[6] | ((Memoria[Registros[3]]<<8) | Memoria[Registros[3]+1]);
-        else if (Registros[6]==0x03000000) // Memoria
-            Registros[6]= Registros[6] | ((Memoria[Registros[3]]<<16) | (Memoria[Registros[3]+1]<<8) | Memoria[Registros[3]+2]);
-       if (Registros[5])
+       Set_OperandoValor(Memoria,&Registros[6],direccionFisica);
+       Set_OperandoValor(Memoria,&Registros[5],direccionFisica);
     }
     else {
         if (Registros[4] <= 8) {  //1 operando
@@ -196,7 +203,6 @@ void Set_Operando(int Memoria[N], int Registros[32]){
                 //No hace nada
             }
     }
-
 }
 
 void Set_OperandoValor(int Memoria[N],int *Registro, int *direccionFisica) {
