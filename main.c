@@ -4,13 +4,13 @@
 #include <C:\Users\marti\CLionProjects\MaquinaVirtual2025SegundoCuatri\Mnemonicos.h>
 #define N 16384
 
-void CargarVmx(char NombreArchivo[10], int Memoria[N], int Registros[32],  short int TablaSegmentos[8][2]);
-void ProcesarInstrucciones(int Memoria[N], int Registros[32], short int TablaSegmentos[8][2], bool Dissasembler);
-void Imprimir_Dissasembler(int Memoria[N], short int TablaSegmentos[8][2]);
+void CargarVmx(char NombreArchivo[10], unsigned char Memoria[N], int Registros[32],  short int TablaSegmentos[8][2]);
+void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], bool Dissasembler);
+void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2]);
 void Set_Instruccion(int Instruccion, int Registros[32]);
 void Mover_Ip(int Registros[32]);
-void Set_Operando(int Memoria[N], int Registros[32], int *direccionFisica);
-void Set_OperandoValor(int Memoria[N],int *Registro, int *direccionFisica);
+void Set_Operando(unsigned char Memoria[N], int Registros[32], int *direccionFisica);
+void Set_OperandoValor(unsigned char Memoria[N],int *Registro, int *direccionFisica);
 
 
 int main(int argc,char * argv[]) {
@@ -28,11 +28,13 @@ int main(int argc,char * argv[]) {
             Dissasembler=true;
     }
     CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos);
+    if (Dissasembler)
+        Imprimir_Dissasembler(Memoria);
 
     return 0;
 }
 
-void CargarVmx(char NombreArchivo[10], int Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {
+void CargarVmx(char NombreArchivo[10], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {
     FILE *Archivo;
     int i = 0;
     Archivo = fopen(NombreArchivo, "rb");
