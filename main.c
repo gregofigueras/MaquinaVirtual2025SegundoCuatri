@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <C:\Users\marti\CLionProjects\MaquinaVirtual2025SegundoCuatri\Mnemonicos.h>
 #define N 16384
@@ -158,10 +157,12 @@ void ProcesarInstrucciones(int Memoria[N], int Registros[32], short int TablaSeg
             case 30:
                 LDH(Memoria,Registros,TablaSegmentos);
                 break;
-                case 31:
+            case 31:
                 RND(Memoria,Registros,TablaSegmentos);
                 break;
-
+            default:
+                STOP(-5);
+                break;
 
         }
     }
@@ -214,3 +215,95 @@ void Set_OperandoValor(int Memoria[N],int *Registro, int *direccionFisica) {
         *Registro= *Registro | ((Memoria[*direccionFisica]<<16) | (Memoria[++(*direccionFisica)]<<8) | Memoria[++(*direccionFisica)]);
 }
 
+void Imprimir_Dissasembler(int Memoria[N], short int TablaSegmentos[8][2]) {
+    char TagMnemonico[4];
+    int PosicionFisica=0, PosicionInstruccion;
+    while (PosicionFisica<TablaSegmentos[1][0]) {
+        PosicionInstruccion=PosicionFisica;
+        switch (Memoria[PosicionFisica] & ) {
+            case 0:
+                strcpy(TagMnemonico,"SYS");
+                break;
+            case 1:
+                strcpy(TagMnemonico,"JMP");
+                break;
+            case 2:
+                strcpy(TagMnemonico,"JZ");
+                break;
+            case 3:
+                strcpy(TagMnemonico,"JP");
+                break;
+            case 4:
+                strcpy(TagMnemonico,"JN");
+                break;
+            case 5:
+                strcpy(TagMnemonico,"JNZ");
+
+                break;
+            case 6:
+                strcpy(TagMnemonico,"JNP");
+                break;
+            case 7:
+                strcpy(TagMnemonico,"JNN");
+                break;
+            case 8:
+                strcpy(TagMnemonico,"NOT");
+                break;
+            case 15:
+                strcpy(TagMnemonico,"STOP");
+             break;
+            case 16:
+                strcpy(TagMnemonico,"MOV");
+                break;
+            case 17:
+                strcpy(TagMnemonico,"ADD");
+                break;
+            case 18:
+                strcpy(TagMnemonico,"SUB");
+                break;
+            case 19:
+                strcpy(TagMnemonico,"MUL");
+                break;
+            case 20:
+                strcpy(TagMnemonico,"DIV");
+                break;
+            case 21:
+                strcpy(TagMnemonico,"CMP");
+                break;
+            case 22:
+                strcpy(TagMnemonico,"SHL");
+                break;
+            case 23:
+                strcpy(TagMnemonico,"SHR");
+                break;
+            case 24:
+                strcpy(TagMnemonico,"SAR");
+                break;
+            case 25:
+                strcpy(TagMnemonico,"AND");
+                break;
+            case 26:
+                strcpy(TagMnemonico,"OR");
+                break;
+            case 27:
+                strcpy(TagMnemonico,"XOR");
+                break;
+            case 28:
+                strcpy(TagMnemonico,"SWAP");
+                break;
+            case 29:
+                strcpy(TagMnemonico,"LDL");
+                break;
+            case 30:
+                strcpy(TagMnemonico,"LDH");
+                break;
+            case 31:
+                strcpy(TagMnemonico,"RND");
+                break;
+            default:
+                STOP(-5);
+                break;
+    }
+        if (Memoria[PosicionFisica] & 0x000000E0) {}
+
+}

@@ -33,5 +33,9 @@ void JNZ(int Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void JNP(int Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void JNN(int Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void NOT(int Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void SYS(int Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void STOP(int Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+void SYS(int Memoria[N], int Registros[32],short int TablaSegmentos[8][2];
+void STOP();
+
+void Set_Valor(int Memoria[N],int Registro,int Registros[32],int valor,short int TablaSegmentos[8][2]);
+void Set_Valor_Registro(int valor,int Registro, int Registros[32]);
+void Set_Valor_Memoria(int Memoria[N], int valor,int Registro, int Registros[32],short int TablaSegmentos[8][2]);
