@@ -367,5 +367,3 @@ void print_byte_binary(unsigned char byte) {
 void STOP() {
     exit(0);
 }
-
-
