@@ -30,7 +30,7 @@ int Get_Valor_Memoria(unsigned char Memoria[N], int Registro, int Registros[32],
 
 }
 
-int Get_Valor(unsigned char Memoria, int Registro, int Registros[32],short int TablaSegmentos[8][2]) {
+int Get_Valor(unsigned char Memoria[N], int Registro, int Registros[32],short int TablaSegmentos[8][2]) {
     if (((Registro & 0xFF000000)>>24 )==1)
         return Get_Valor_Registro(Registro, Registros);
     else if (((Registro & 0xFF000000)>>24 )==2)
@@ -58,6 +58,9 @@ void Set_Valor_Memoria(unsigned char Memoria[N],int valor,int Registro, int Regi
     int base=TablaSegmentos[(Registros[aux]&0x00FF0000)][0] + (Registros[aux]&0x0000FFFF);
     int DireccionFisica= 0;
     DireccionFisica= base + (Registros[5] & 0x0000FFFF);
+
+    if (DireccionFisica> TablaSegmentos[(Registros[aux]&0x00FF0000)][1])
+        exit(-5);
 
     Memoria[DireccionFisica]= (valor & 0xFF000000)>>24;
     Memoria[DireccionFisica+1]= (valor & 0x00FF0000)>>16;
