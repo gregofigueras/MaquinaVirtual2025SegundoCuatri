@@ -252,11 +252,10 @@ void NOT(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 }
 
 void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-    int posinicial = Memoria[Registros[13]];
-    int direccionfisica = TablaSegmentos[((Registros[26] & 0xFFFF0000) >> 16)][0] + posinicial;
-    int modo = Memoria[Registros[10]] & 0x000000FF; // 1 byte
-    int celdas = Memoria[Registros[12]] & 0x0000FFFF;
-    int tamano = (Memoria[Registros[12]] & 0xFFFF0000) >> 16;
+    int direccionfisica = TablaSegmentos[((Registros[13] & 0xFFFF0000) >> 16)][0] + (Registros[13] & 0x0000FFFF);
+    int modo = Registros[10] & 0x000000FF; // 1 byte
+    int celdas = Registros[12] & 0x0000FFFF;
+    int tamano = (Registros[12] & 0xFFFF0000) >> 16;
     int tipo = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
     int i,j,num;
     int mascara = 0x000000FF;
@@ -264,11 +263,11 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
     if (tipo == 1) {  // READ
         if (modo == 0X10) {  //binario
             for (i=0; i<celdas; i++) {
-                mascara = 0xFF000000;
+                mascara = 0x000000FF;
                 printf("[%04X] ", direccionfisica);
                 scanf("%32s", binstr); // Leer la cadena binaria
                 num = (int)strtol(binstr, NULL, 2); // Convertir a entero
-                for (j=tamano-1; j<0; j--) {
+                for (j=tamano-1; j>=0; j--) {
                     Memoria[direccionfisica+j] = num & mascara;
                     mascara = mascara << 8;
                 }
@@ -278,11 +277,11 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
         else
             if (modo == 0X80) {   //hecadecimal
                 for (i=0; i<celdas; i++) {
-                    mascara = 0xFF000000;
+                    mascara = 0x000000FF;
                     printf("[%04X] ", direccionfisica);
                     scanf("%02x",&num);
-                    for (j=tamano-1; j<=0; j--) {
-                        Memoria[direccionfisica+j]=num;
+                    for (j=tamano-1; j>=0; j--) {
+                        Memoria[direccionfisica+j] = num & mascara;
                         mascara = mascara << 8;
                     }
                 }
@@ -290,11 +289,11 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
             else
                 if (modo == 0X04) {   //octal
                     for (i=0; i<celdas; i++) {
-                        mascara = 0xFF000000;
+                        mascara = 0x000000FF;
                         printf("[%04X] ", direccionfisica);
                         scanf("%o",&num);
-                        for (j=tamano-1; j<0; j--) {
-                            Memoria[direccionfisica+j]=num;
+                        for (j=tamano-1; j>=0; j--) {
+                            Memoria[direccionfisica+j] = num & mascara;
                             mascara = mascara << 8;
                         }
                     }
@@ -302,11 +301,11 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                 else
                     if (modo == 0X02) {   //caracteres
                         for (i=0; i<celdas; i++) {
-                            mascara = 0xFF000000;
+                            mascara = 0x000000FF;
                             printf("[%04X] ", direccionfisica);
                             scanf("%c",&num);
-                            for (j=tamano-1; j<0; j--) {
-                                Memoria[direccionfisica+j]=num;
+                            for (j=tamano-1; j>=0; j--) {
+                                Memoria[direccionfisica+j] = num & mascara;
                                 mascara = mascara << 8;
                             }
                         }
@@ -314,13 +313,14 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                    else
                        if (modo == 0X01) {   //decimal
                            for (i=0; i<celdas; i++) {
-                               mascara = 0xFF000000;
+                               mascara = 0x000000FF;
                                printf("[%04X] ", direccionfisica);
                                scanf("%d",&num);
-                               for (j=tamano-1; j<0; j--) {
-                                   Memoria[direccionfisica+j]=num;
+                               for (j=tamano-1; j>=0; j--) {
+                                   Memoria[direccionfisica+j] = num & mascara;
                                    mascara = mascara << 8;
                                }
+                               direccionfisica+=tamano;
                            }
                         }
     }

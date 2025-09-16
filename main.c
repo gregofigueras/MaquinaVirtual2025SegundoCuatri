@@ -162,8 +162,9 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
                 break;
 
         }
+        direccionFisica++;
     }
-
+    printf("");
 }
 
 void Set_Instruccion(int Instruccion, int Registros[32]){
@@ -172,13 +173,13 @@ void Set_Instruccion(int Instruccion, int Registros[32]){
     Instruccion = Instruccion >> 4;   //Carga los tipos de los OP1 y OP2
     if (Instruccion % 2) { // 2 Operandos
         Registros[5]= (Instruccion & 0x3) << 24;
-        Registros[6]= (Instruccion & 0xC) << 24;
+        Registros[6]= ((Instruccion & 0xC)>>2) << 24;
 
         // MOVER IP
         Registros[3]+= 1 + ((Registros[5] & 0xFF000000)>>24) + ((Registros[6] & 0xFF000000)>>24);
     }
     else if (Instruccion != 0) { // 1 Operando
-        Registros[5]= (Instruccion & 0xC) <<24;
+        Registros[5]= ((Instruccion & 0xC)>>2) <<24;
         // MOVER IP
         Registros[3]+= 1 + ((Registros[5] & 0xFF000000)>>24);
     }
@@ -190,11 +191,13 @@ void Set_Operando(unsigned char Memoria[N], int Registros[32], int *direccionFis
 
     if (Registros[4] >= 16) {  //2 operandos
        Set_OperandoValor(Memoria,&Registros[6],direccionFisica);
+        (*direccionFisica)++;
        Set_OperandoValor(Memoria,&Registros[5],direccionFisica);
     }
     else {
         if (Registros[4] <= 8) {  //1 operando
             Set_OperandoValor(Memoria,&Registros[5],direccionFisica);
+            (*direccionFisica)+= ((Registros[5] & 0xFF000000)>>24);
         }
         else
             if (Registros[4] == 15) { // 0 Operandos
@@ -213,10 +216,10 @@ void Set_OperandoValor(unsigned char Memoria[N],int *Registro, int *direccionFis
 }
 
 
-void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *PosicionFisica,long int *acumulador, int PosicionByte) {
+void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *PosicionFisica,long int *acumulador, int byte) {
     int aux;
-    if ((Memoria[PosicionByte] & 0xC0)>>4 == 12) {  // 3 bytes
-                (*PosicionFisica)++;
+    if (byte==3) {  // 3 bytes
+        (*PosicionFisica)++;
                 switch (Memoria[*PosicionFisica] & 0x1F) {
                     case 1:
                         strcpy(Operando,"[LAR");
@@ -284,7 +287,7 @@ void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *
 
 
 
-            } else if ((Memoria[PosicionByte] & 0xC0)>>4 == 8) { // 2 bytes inmediato
+            } else if (byte==2) { // 2 bytes inmediato
                 (*PosicionFisica)++;
                 aux=Memoria[*PosicionFisica] <<8;
                 (*acumulador)= (*acumulador)<<8 | Memoria[*PosicionFisica];
@@ -293,7 +296,7 @@ void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *
                 (*acumulador)= (*acumulador)<<8 | Memoria[*PosicionFisica];
                 sprintf(Operando,"%d",aux);
 
-            } else if ((Memoria[PosicionByte] & 0xC0)>>4 == 4) { // 1 byte registro
+            } else if (byte==1) { // 1 byte registro
                 (*PosicionFisica)++;
                 switch (Memoria[*PosicionFisica] & 0x1F) {
                     case 1:
@@ -355,6 +358,7 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
     char TagMnemonico[6]; char Operando[10]; char Operando2[10];
     int PosicionFisica=0, PosicionInstruccion,aux;
     long int acumulador=0;
+    int PosicionByte;
     bool op1=false,op2=false;
     while (PosicionFisica<TablaSegmentos[0][1]) {
         PosicionInstruccion=PosicionFisica;
@@ -446,18 +450,18 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
         }
         if (((Memoria[PosicionFisica] & 0xF0)>>4) % 2){ // Es de 2 Operando
             op2=true;
-            int PosicionByte=PosicionFisica;
-            Set_Operando_Dissasembler(Operando2,Memoria,&PosicionFisica,&acumulador,PosicionByte);
-            PosicionFisica++;
-            Set_Operando_Dissasembler(Operando,Memoria,&PosicionFisica,&acumulador,PosicionByte);
+            PosicionByte=Memoria[PosicionFisica];
+            Set_Operando_Dissasembler(Operando2,Memoria,&PosicionFisica,&acumulador,(PosicionByte & 0xC0) >>6);
+            Set_Operando_Dissasembler(Operando,Memoria,&PosicionFisica,&acumulador,(PosicionByte & 0x30) >>4);
         }
          else if (((Memoria[PosicionFisica] & 0xF0)>>4) !=0) { // Es de 1 Operandos
              op1=true;
-            Set_Operando_Dissasembler(Operando,Memoria,&PosicionFisica,&acumulador);
+             PosicionByte=Memoria[PosicionFisica];
+             Set_Operando_Dissasembler(Operando,Memoria,&PosicionFisica,&acumulador,(PosicionByte & 0xC0) >>6);
         }
         else { // Es de 0 Operandos
             printf("[%04X] %12X | %s\n",PosicionInstruccion,acumulador,TagMnemonico);
-             PosicionFisica++;
+
         }
     if (op1){
         printf("[%04X] %12X | %s   %s\n",PosicionInstruccion,acumulador,TagMnemonico,Operando);
@@ -465,6 +469,7 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
     else if (op2) {
         printf("[%04X] %12X | %s   %s, %s\n",PosicionInstruccion,acumulador,TagMnemonico,Operando, Operando2);
     }
-}
-
+        PosicionFisica++;
+    }
+    printf("////// FINAL DISSASEMBLER //////\n\n");
 }
