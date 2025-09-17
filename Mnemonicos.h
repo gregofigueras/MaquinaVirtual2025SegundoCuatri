@@ -34,7 +34,7 @@ void JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 void JNN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void NOT(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void print_byte_binary(unsigned char byte);
+void print_int_binary(int num) ;
 void STOP();
 
 void Set_Valor(unsigned char Memoria[N],int Registro,int Registros[32],int valor,short int TablaSegmentos[8][2]);

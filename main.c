@@ -267,7 +267,7 @@ void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *
                         strcpy(Operando,"[CS");
                         break;
                     case 27:
-                        strcpy(Operando,"[DS");
+                        strcpy(Operando,"[");
                         break;
                 }
                 *acumulador=(*acumulador)<<8 | Memoria[*PosicionFisica];
@@ -277,13 +277,16 @@ void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *
                 (*PosicionFisica)++;
                 aux= aux | Memoria[*PosicionFisica];
                 *acumulador= (*acumulador)<<8 | Memoria[*PosicionFisica];
-                if (aux) {
-                    char num[10],mas='+',cierre=']';
-                    sprintf(num,"%s%d%s",mas,aux,cierre);
-                    strcat(Operando, num);
-                }
-                else
-                    strcat(Operando,"]");
+        char num[10],mas='+',cierre=']';
+        if (strcmp(Operando,"[")==0)
+            sprintf(num,"%d%c",aux,cierre);
+        else {
+            if (aux)
+                sprintf(num,"%c%d%c",mas,aux,cierre);
+            else
+                sprintf(num,"%c",cierre);
+        }
+        strcat(Operando, num);
 
 
 
@@ -300,52 +303,52 @@ void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *
                 (*PosicionFisica)++;
                 switch (Memoria[*PosicionFisica] & 0x1F) {
                     case 1:
-                        strcpy(Operando,"[LAR]");
+                        strcpy(Operando,"LAR");
                         break;
                     case 2:
-                        strcpy(Operando,"[MAR]");
+                        strcpy(Operando,"MAR");
                         break;
                     case 3:
-                        strcpy(Operando,"[MBR]");
+                        strcpy(Operando,"MBR");
                         break;
                     case 4:
-                        strcpy(Operando,"[IP]");
+                        strcpy(Operando,"IP");
                         break;
                     case 5:
-                        strcpy(Operando,"[OP1]");
+                        strcpy(Operando,"OP1");
                         break;
                     case 6:
-                        strcpy(Operando,"[OP2]");
+                        strcpy(Operando,"OP2");
                         break;
                     case 10:
-                        strcpy(Operando,"[EAX]");
+                        strcpy(Operando,"EAX");
                         break;
                     case 11:
-                        strcpy(Operando,"[EBX]");
+                        strcpy(Operando,"EBX");
                         break;
                     case 12:
-                        strcpy(Operando,"[ECX]");
+                        strcpy(Operando,"ECX");
                         break;
                     case 13:
-                        strcpy(Operando,"[EDX]");
+                        strcpy(Operando,"EDX");
                         break;
                     case 14:
-                        strcpy(Operando,"[EEX]");
+                        strcpy(Operando,"EEX");
                         break;
                     case 15:
-                        strcpy(Operando,"[EFX]");
+                        strcpy(Operando,"EFX");
                         break;
                     case 16:
-                        strcpy(Operando,"[AC]");
+                        strcpy(Operando,"AC");
                         break;
                     case 17:
-                        strcpy(Operando,"[CC]");
+                        strcpy(Operando,"CC");
                         break;
                     case 26:
-                        strcpy(Operando,"[CS]");
+                        strcpy(Operando,"CS");
                         break;
                     case 27:
-                        strcpy(Operando,"[DS]");
+                        strcpy(Operando,"DS");
                         break;
                 }
                 (*acumulador)=(*acumulador)<<8 | Memoria[(*PosicionFisica)];

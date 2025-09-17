@@ -55,11 +55,11 @@ void Set_Valor_Registro(int valor,int Registro, int Registros[32]) {
 
 void Set_Valor_Memoria(unsigned char Memoria[N],int valor,int Registro, int Registros[32],short int TablaSegmentos[8][2]) {
     int aux= (Registro & 0x001F0000)>>16;
-    int base=TablaSegmentos[(Registros[aux]&0x00FF0000)][0] + (Registros[aux]&0x0000FFFF);
+    int base=TablaSegmentos[((Registros[aux]&0x00FF0000 )>>16)][0] + (Registros[aux]&0x0000FFFF);
     int DireccionFisica= 0;
     DireccionFisica= base + (Registros[5] & 0x0000FFFF);
 
-    if (DireccionFisica> TablaSegmentos[(Registros[aux]&0x00FF0000)][1])
+    if (DireccionFisica> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1])
         exit(-5);
 
     Memoria[DireccionFisica]= (valor & 0xFF000000)>>24;
@@ -328,43 +328,59 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
         // WRITE
         printf("Imprime por pantalla: \n");
         for (i=0; i<celdas; i++) {
-            printf("[%04X]: ", direccionfisica);
-            if (modo == 0X10) {  //binario
+            printf("[%04X] ", direccionfisica);
+            if (modo & 0X10) { //binario
+                num = 0;
                 for (j=0; j<tamano; j++) {
-                    print_byte_binary(Memoria[direccionfisica++]);
-                    putchar(' ');
+                    num |= (Memoria[direccionfisica + j] << (8 * j));
                 }
-
-                if (modo & 0X80) {   //hecadecimal
-                    for (j=0;j<tamano;j++) {
-                        printf("0x%02X", Memoria[direccionfisica++]);
-                    }
-                }
-                if (modo & 0X04) {   //octal
-                    for (j=0;j<tamano;j++) {
-                        printf("@%o", Memoria[direccionfisica++]);
-                    }
-                }
-                if (modo & 0X02) {   //caracteres
-                    for (j=0;j<tamano;j++) {
-                        printf("%c", Memoria[direccionfisica++]);
-                    }
-                }
-                if (modo & 0X01) {   //decimal
-                    for (j=0;j<tamano;j++) {
-                        printf("%d", Memoria[direccionfisica++]);
-                    }
-
-                }
+                printf("0b");
+                print_int_binary(num);
+                putchar(' ');
             }
+            if (modo & 0X80) {   //hecadecimal
+                num = 0;
+                for (j=0;j<tamano;j++) {
+                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                }
+                printf( "0x%0*X\n", tamano*2,num);
+            }
+            if (modo & 0X04) {   //octal
+                num = 0;
+                for (j=0;j<tamano;j++) {
+                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                }
+                printf("@%0*o\n", tamano * 3, num); // Each octal digit is about 3 bits
+            }
+            if (modo & 0X02) {   //caracteres
+                num = 0;
+                for (j=0;j<tamano;j++) {
+                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                }
+                printf("%c\n", num);
+            }
+            if (modo & 0X01) {   //decimal
+                num = 0;
+                for (j=0;j<tamano;j++) {
+                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                }
+                printf("%0*d\n", tamano * 3, num);
+            }
+            direccionfisica += tamano;
         }
     }
 }
 
-void print_byte_binary(unsigned char byte) {
-    for (int k = 7; k >= 0; k--) {
-        putchar((byte & (1 << k)) ? '1' : '0');
+
+void print_int_binary(int num) {
+    int started = 0;
+    for (int k = 31; k >= 0; k--) {
+        if ((num & (1 << k)) || started) {
+            putchar((num & (1 << k)) ? '1' : '0');
+            started = 1;
+        }
     }
+    if (!started) putchar('0');
 }
 
 void STOP() {
