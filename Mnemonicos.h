@@ -4,6 +4,7 @@
 
 #ifndef MAQUINAVIRTUAL2025_MNEMONICOS_H
 #define MAQUINAVIRTUAL2025_MNEMONICOS_H
+#include <stdbool.h>
 #define N 16384
 #endif //MAQUINAVIRTUAL2025_MNEMONICOS_H
 
@@ -25,13 +26,13 @@ void RND(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void LDH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void LDL(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void JMP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void JZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void JP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void JN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void JNZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void JNN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+bool JMP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+bool JZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+bool JP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+bool JN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+bool JNZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+bool JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+bool JNN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void NOT(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void print_int_binary(int num) ;

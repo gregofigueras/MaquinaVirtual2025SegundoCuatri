@@ -17,13 +17,14 @@ int Get_Valor_Registro(int Registro, int Registros[32]) {
 }
 
 int Get_Valor_Inmediato(int Registro) {
-    return Registro & 0x0000FFFF;
+    short int valor = Registro & 0x0000FFFF;
+    return (int)valor; // Signo extendido
 }
 
 
 int Get_Valor_Memoria(unsigned char Memoria[N], int Registro, int Registros[32], short int TablaSegmentos[8][2]) {
     int aux= (Registro & 0x001F0000)>>16;
-    int base=TablaSegmentos[(Registros[aux]&0x00FF0000)][0] + (Registros[aux]&0x0000FFFF);
+    int base=TablaSegmentos[(Registros[aux]&0x00FF0000)>>16][0] + (Registros[aux]&0x0000FFFF);
 
     int DireccionFisica= base + Registro & 0x0000FFFF;
     return (Memoria[DireccionFisica]<<24) | (Memoria[DireccionFisica+1]<<16) | (Memoria[DireccionFisica+2]<< 8) | Memoria[DireccionFisica+3];
@@ -33,9 +34,9 @@ int Get_Valor_Memoria(unsigned char Memoria[N], int Registro, int Registros[32],
 int Get_Valor(unsigned char Memoria[N], int Registro, int Registros[32],short int TablaSegmentos[8][2]) {
     if (((Registro & 0xFF000000)>>24 )==1)
         return Get_Valor_Registro(Registro, Registros);
-    else if (((Registro & 0xFF000000)>>24 )==2)
+    if (((Registro & 0xFF000000)>>24 )==2)
         return Get_Valor_Inmediato(Registro);
-    else if (((Registro & 0xFF000000)>>24 )==3)
+    if (((Registro & 0xFF000000)>>24 )==3)
         return Get_Valor_Memoria(Memoria,Registro,Registros,TablaSegmentos);
 }
 
@@ -67,9 +68,9 @@ void Set_Valor_Memoria(unsigned char Memoria[N],int valor,int Registro, int Regi
     Memoria[DireccionFisica+2]= (valor & 0x0000FF00)>>8;
     Memoria[DireccionFisica+3]= (valor & 0x000000FF);
 
-    Registros[0]=Registros[aux]&0x00FF0000 | Registro & 0x0000FFFF;
-    Registros[1]=0x00040000 | DireccionFisica & 0x0000FFFF;
-    Registros[2]=valor;
+    Registros[0]= (Registros[aux] & 0x00FF0000) | (Registro & 0x0000FFFF);
+    Registros[1]= 0x00040000 | (DireccionFisica & 0x0000FFFF);
+    Registros[2]= valor;
 }
 
 void Set_CC(int Registros[32], int resultado) {
@@ -79,6 +80,9 @@ void Set_CC(int Registros[32], int resultado) {
 
     } else if (resultado < 0) {
         Registros[17]= Registros[17] | 0x80000000; // N=1
+    }
+    else {
+        Registros[17]= Registros[17] | 0x00000000; // N=0 y Z=0
     }
 }
 
@@ -210,38 +214,62 @@ void LDL(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
     Set_Valor(Memoria,Registros[5],Registros,aux,TablaSegmentos);
 }
 
-void JMP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+bool JMP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
     Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+    return true;
 }
 
-void JZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
- if (Registros[17] & 0x40000000) // Z=1
+bool JZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+ if (Registros[17] & 0x40000000) {
+     // Z=1
      Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+     return true;
+ }
+    return false;
 }
 
-void JP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-    if (!(Registros[17] & 0xC0000000))
+bool JP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+    if (!(Registros[17] & 0xC0000000)) {
         Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+        return true;
+    }
+    return false;
 }
 
-void JN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-    if (Registros[17] & 0x80000000) // N=1
+bool JN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+    if (Registros[17] & 0x80000000) {
+        // N=1
         Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+        return true;
+    }
+    return false;
 }
 
-void JNZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-    if (!(Registros[17] & 0x40000000)) // Z=0
+bool JNZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+    if (!(Registros[17] & 0x40000000)) {
+        // Z=0
         Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+        return true;
+    }
+    return false;
 }
 
-void JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-   if (Registros[17] & 0xC0000000) // N!=0 | Z!=0
+bool JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+   if (Registros[17] & 0xC0000000) {
+       // N!=0 | Z!=0
        Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+       return true;
+   }
+    return false;
 }
 
-void JNN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-   if (!(Registros[17] & 0x80000000)) // N=0
-     Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+bool JNN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+   if (!(Registros[17] & 0x80000000)) {
+       // N=0
+       Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+       return true;
+   }
+    return false;
 }
 
 void NOT(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
@@ -343,30 +371,31 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                 for (j=0;j<tamano;j++) {
                     num |= (Memoria[direccionfisica + j] << (8 * j));
                 }
-                printf( "0x%0*X\n", tamano*2,num);
+                printf( "0x%X ",num);
             }
             if (modo & 0X04) {   //octal
                 num = 0;
                 for (j=0;j<tamano;j++) {
                     num |= (Memoria[direccionfisica + j] << (8 * j));
                 }
-                printf("@%0*o\n", tamano * 3, num); // Each octal digit is about 3 bits
+                printf("@%o ", num); // Each octal digit is about 3 bits
             }
             if (modo & 0X02) {   //caracteres
                 num = 0;
                 for (j=0;j<tamano;j++) {
                     num |= (Memoria[direccionfisica + j] << (8 * j));
                 }
-                printf("%c\n", num);
+                printf("%c ", num);
             }
             if (modo & 0X01) {   //decimal
                 num = 0;
                 for (j=0;j<tamano;j++) {
                     num |= (Memoria[direccionfisica + j] << (8 * j));
                 }
-                printf("%0*d\n", tamano * 3, num);
+                printf("%d ", num);
             }
             direccionfisica += tamano;
+            printf("\n");
         }
     }
 }

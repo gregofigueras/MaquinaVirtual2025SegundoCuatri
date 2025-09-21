@@ -70,8 +70,10 @@ void CargarVmx(char NombreArchivo[10], unsigned char Memoria[N], int Registros[3
 void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {;
     int aux;
     int direccionFisica=TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][0];
+    bool jump;
 
     for (;direccionFisica<TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][1];) {
+        jump = false; // Salto
         aux=Memoria[direccionFisica];
         Set_Instruccion(aux,Registros);  // Mueve IP
         direccionFisica++;
@@ -83,25 +85,25 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
                 SYS(Memoria,Registros,TablaSegmentos);
                 break;
             case 1:
-                JMP(Memoria,Registros,TablaSegmentos);
+                jump = JMP(Memoria,Registros,TablaSegmentos);
                 break;
             case 2:
-                JZ(Memoria,Registros,TablaSegmentos);
+                jump = JZ(Memoria,Registros,TablaSegmentos);
                 break;
             case 3:
-                JP(Memoria,Registros,TablaSegmentos);
+                jump = JP(Memoria,Registros,TablaSegmentos);
                 break;
             case 4:
-                JN(Memoria,Registros,TablaSegmentos);
+                jump = JN(Memoria,Registros,TablaSegmentos);
                 break;
             case 5:
-                JNZ(Memoria,Registros,TablaSegmentos);
+                jump = JNZ(Memoria,Registros,TablaSegmentos);
                 break;
             case 6:
-                JNP(Memoria,Registros,TablaSegmentos);
+                jump = JNP(Memoria,Registros,TablaSegmentos);
                 break;
             case 7:
-                JNN(Memoria,Registros,TablaSegmentos);
+                jump = JNN(Memoria,Registros,TablaSegmentos);
                 break;
             case 8:
                 NOT(Memoria,Registros,TablaSegmentos);
@@ -162,7 +164,10 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
                 break;
 
         }
-        direccionFisica++;
+        if (jump) // salto
+            direccionFisica = TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][0] + (Registros[3] & 0x0000FFFF);
+        else
+            direccionFisica++;
     }
     printf("");
 }
@@ -208,16 +213,16 @@ void Set_Operando(unsigned char Memoria[N], int Registros[32], int *direccionFis
 
 void Set_OperandoValor(unsigned char Memoria[N],int *Registro, int *direccionFisica) {
     if (*Registro == 0x01000000) // Registros
-        *Registro= *Registro | Memoria[*direccionFisica];
+        (*Registro)= *Registro | Memoria[*direccionFisica];
     else if (*Registro==0x02000000) // Inmediato
-        *Registro= *Registro | ((Memoria[*direccionFisica]<<8) | Memoria[++(*direccionFisica)]);
+        (*Registro)= *Registro | ((Memoria[*direccionFisica]<<8) | Memoria[++(*direccionFisica)]);
     else if (*Registro==0x03000000) // Memoria
-        *Registro= *Registro | ((Memoria[*direccionFisica]<<16) | (Memoria[++(*direccionFisica)]<<8) | Memoria[++(*direccionFisica)]);
+        (*Registro)= *Registro | ((Memoria[*direccionFisica]<<16) | (Memoria[++(*direccionFisica)]<<8) | Memoria[++(*direccionFisica)]);
 }
 
 
 void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *PosicionFisica,long int *acumulador, int byte) {
-    int aux;
+    short int aux;
     if (byte==3) {  // 3 bytes
         (*PosicionFisica)++;
                 switch (Memoria[*PosicionFisica] & 0x1F) {
