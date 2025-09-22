@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include "Mnemonicos.h"
 #include <ctype.h>
 #define N 16384
 
@@ -352,15 +351,13 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                            }
                         }
     }
-    else if (tipo == 2) {
-        // WRITE
-        printf("Imprime por pantalla: \n");
+    else if (tipo == 2) {  // WRITE
         for (i=0; i<celdas; i++) {
             printf("[%04X] ", direccionfisica);
             if (modo & 0X10) { //binario
                 num = 0;
                 for (j=0; j<tamano; j++) {
-                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                    num |= (Memoria[direccionfisica + j] << (8 * (tamano - 1 - j)));
                 }
                 printf("0b");
                 print_int_binary(num);
@@ -369,28 +366,28 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
             if (modo & 0X80) {   //hecadecimal
                 num = 0;
                 for (j=0;j<tamano;j++) {
-                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                    num |= (Memoria[direccionfisica + j] << (8 * (tamano - 1 - j)));
                 }
                 printf( "0x%X ",num);
             }
             if (modo & 0X04) {   //octal
                 num = 0;
                 for (j=0;j<tamano;j++) {
-                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                    num |= (Memoria[direccionfisica + j] << (8 * (tamano - 1 - j)));
                 }
                 printf("@%o ", num); // Each octal digit is about 3 bits
             }
             if (modo & 0X02) {   //caracteres
                 num = 0;
                 for (j=0;j<tamano;j++) {
-                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                    num |= (Memoria[direccionfisica + j] << (8 * (tamano - 1 - j)));
                 }
                 printf("%c ", num);
             }
             if (modo & 0X01) {   //decimal
                 num = 0;
                 for (j=0;j<tamano;j++) {
-                    num |= (Memoria[direccionfisica + j] << (8 * j));
+                    num |= (Memoria[direccionfisica + j] << (8 * (tamano - 1 - j)));
                 }
                 printf("%d ", num);
             }

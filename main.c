@@ -1,10 +1,10 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include "Mnemonicos.h"
+#include "Mnemonicos.c"
 #define N 16384
 
-void CargarVmx(char NombreArchivo[10], unsigned char Memoria[N], int Registros[32],  short int TablaSegmentos[8][2]);
+void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32],  short int TablaSegmentos[8][2]);
 void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]);
 void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2]);
 void Set_Instruccion(int Instruccion, int Registros[32]);
@@ -16,16 +16,19 @@ int main(int argc,char * argv[]) {
     unsigned char Memoria[N];
     short int TablaSegmentos[8][2];
     int Registros[32];
-    bool Dissasembler=true;
-    char DireccionVmx[256]="sample.vmx";
-
-    for (int i=1;i<argc;i++){
-        if (strcmp(".vmx", strrchr(argv[i],'.'))==0){
-            strcpy(DireccionVmx,argv[i]);
+    bool Dissasembler=false;
+    char DireccionVmx[256];
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-d") == 0) {
+            Dissasembler = true;
+        } else {
+            char *ext = strrchr(argv[i], '.');
+            if (ext && strcmp(ext, ".vmx") == 0) {
+                strcpy(DireccionVmx, argv[i]);
+            }
         }
-        if (strcmp(argv[i],"-d")==0)
-            Dissasembler=true;
     }
+
     CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos);
     if (Dissasembler)
         Imprimir_Dissasembler(Memoria,TablaSegmentos);
@@ -33,10 +36,10 @@ int main(int argc,char * argv[]) {
     return 0;
 }
 
-void CargarVmx(char NombreArchivo[10], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {
+void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {
     FILE *Archivo;
     int i = 0;
-    Archivo = fopen("funcion.vmx", "rb");
+    Archivo = fopen(NombreArchivo, "rb");
     if (Archivo == NULL) {
         printf("Error al abrir el archivo.\n");
         return;
@@ -185,6 +188,7 @@ void Set_Instruccion(int Instruccion, int Registros[32]){
     }
     else if (Instruccion != 0) { // 1 Operando
         Registros[5]= ((Instruccion & 0xC)>>2) <<24;
+        Registros[6]=0;
         // MOVER IP
         Registros[3]+= 1 + ((Registros[5] & 0xFF000000)>>24);
     }
@@ -202,7 +206,6 @@ void Set_Operando(unsigned char Memoria[N], int Registros[32], int *direccionFis
     else {
         if (Registros[4] <= 8) {  //1 operando
             Set_OperandoValor(Memoria,&Registros[5],direccionFisica);
-            (*direccionFisica)+= ((Registros[5] & 0xFF000000)>>24);
         }
         else
             if (Registros[4] == 15) { // 0 Operandos
