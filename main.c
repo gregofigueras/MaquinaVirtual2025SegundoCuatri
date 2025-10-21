@@ -1,7 +1,9 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include "Mnemonicos.c"
+#include <stdlib.h>
+#include "Mnemonicos.h"
 #define N 16384
 
 void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32],  short int TablaSegmentos[8][2]);
@@ -13,10 +15,13 @@ void Set_OperandoValor(unsigned char Memoria[N],int *Registro, int *direccionFis
 
 
 int main(int argc,char * argv[]) {
+    int argvP[100];
+    int cuentaPalabra=0;
+    int cuentamemoria=0;
     unsigned char Memoria[N];
     short int TablaSegmentos[8][2];
     int Registros[32];
-    bool Dissasembler=false;
+    bool Dissasembler=true;
     char DireccionVmx[256];
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-d") == 0) {
@@ -25,6 +30,29 @@ int main(int argc,char * argv[]) {
             char *ext = strrchr(argv[i], '.');
             if (ext && strcmp(ext, ".vmx") == 0) {
                 strcpy(DireccionVmx, argv[i]);
+            }
+            if (strcmp(argv[i],"-p")==0) {
+                char Palabra[200];
+                i++;
+                for (;i<argc;i++) {
+                    argvP[cuentaPalabra]=cuentamemoria;
+                    strcpy(Palabra, argv[i]);
+                    for (int j=0 ;strlen(Palabra) >= j;j++) {
+                        Memoria[cuentamemoria] = Palabra[j];
+                        cuentamemoria++;
+                    }
+                    cuentaPalabra++;
+                }
+                for (i=0;i<=cuentaPalabra;i++) {
+                    Memoria[cuentamemoria]= argvP[i] & 0xFF000000;
+                    Memoria[++cuentamemoria]= argvP[i] & 0x00FF0000;
+                    Memoria[++cuentamemoria]= argvP[i] & 0x0000FF00;
+                    Memoria[++cuentamemoria]= argvP[i] & 0x000000FF;
+                    cuentamemoria++;
+                }
+                TablaSegmentos[0][0]=0x0000;
+                TablaSegmentos[0][1]=cuentamemoria;
+                TablaSegmentos[1][0]=cuentamemoria;
             }
         }
     }
@@ -39,7 +67,7 @@ int main(int argc,char * argv[]) {
 void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {
     FILE *Archivo;
     int i = 0;
-    Archivo = fopen(NombreArchivo, "rb");
+    Archivo = fopen("sample2.vmx", "rb");
     if (Archivo == NULL) {
         printf("Error al abrir el archivo.\n");
         return;
@@ -51,23 +79,67 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
     fseek(Archivo,0,SEEK_SET);
     fread(data, 1, TamanoArchivo, Archivo);
     fclose(Archivo);
-    int TamanoCs= (data[6] << 8) | data[7];
-    TablaSegmentos[0][0]=0x0000;
-    TablaSegmentos[0][1]=TamanoCs;
-    TablaSegmentos[1][0]=TamanoCs;
-    TablaSegmentos[1][1]=N-TamanoCs;
+    if (data[5]==1) {
+        int TamanoCs= (data[6] << 8) | data[7];
+        TablaSegmentos[0][0]=0x0000;
+        TablaSegmentos[0][1]=TamanoCs;
+        TablaSegmentos[1][0]=TamanoCs;
+        TablaSegmentos[1][1]=N-TamanoCs;
 
 
 
-    Registros[26]=0x00000000; // CS
-    Registros[3]= Registros[26]; // IP = CS
-    Registros[27]=0x00010000; // DS
-    int j=0;
-    for (i=8; i<TamanoArchivo;i++){
-        Memoria[j]=data[i];
-        j++;
+        Registros[26]=0x00000000; // CS
+        Registros[3]= Registros[26]; // IP = CS
+        Registros[27]=0x00010000; // DS
+        int j=0;
+        for (i=8; i<TamanoArchivo;i++) {
+            Memoria[j]=data[i];
+            j++;
+        }
+    }else if (data[5]==2) {
+        int i=0;
+        int TamanoCs= (data[6] << 8) | data[7];
+        int TamanoDs= (data[8] << 8) | data[9];
+        int TamanoEs= (data[10] << 8) | data[11];
+        int TamanoSS= (data[12] << 8) | data[13];
+        int TamanoConstS= (data[14] << 8) | data[15];
+        int OffsetEntry= (data[16] << 8) | data[17];
+        if (TablaSegmentos[0][1]) {
+            Registros[31]= i<<16;
+            i++;
+        }
+        if (TamanoConstS) {
+            Registros[30]= i<<16;
+            TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
+            TablaSegmentos[i][1]= TamanoConstS;
+            i++;
+        }
+        if (TamanoCs) {
+            if (OffsetEntry)
+                Registros[3]= i<<16 + (OffsetEntry & 0x0000FFFF);
+            Registros[26]== i<<16;
+            TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
+            TablaSegmentos[i][1]= TamanoCs;
+            i++;
+        }
+        if (TamanoDs) {
+            Registros[27] == i<<16;
+            TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
+            TablaSegmentos[i][1]= TamanoDs;
+            i++;
+        }
+        if (TamanoEs) {
+            Registros[28]== i<<16;
+            TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
+            TablaSegmentos[i][1]= TamanoEs;
+            i++;
+        }
+        if (TamanoSS) {
+            Registros[29]= i<<16;
+            TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
+            TablaSegmentos[i][1]= TamanoSS;
+        }
     }
-
 }
 
 void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {;
@@ -163,7 +235,7 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
                 RND(Memoria,Registros,TablaSegmentos);
                 break;
             default:
-                STOP(-5);
+                exit(-5);
                 break;
 
         }
@@ -370,10 +442,12 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
     int PosicionFisica=0, PosicionInstruccion,aux;
     long int acumulador=0;
     int PosicionByte;
-    bool op1=false,op2=false;
+    bool instruccion_invalida = false;
+    bool op1=false,op2=false,op0=false;
     while (PosicionFisica<TablaSegmentos[0][1]) {
         PosicionInstruccion=PosicionFisica;
         acumulador=Memoria[PosicionFisica];
+        op0=false;
         op1=false;
         op2=false;
         switch (Memoria[PosicionFisica] & 0x1F) {
@@ -456,7 +530,9 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
                 strcpy(TagMnemonico,"RND");
                 break;
             default:
-                STOP(-5);
+                printf("\n INSTRUCCION INVALIDA \n");
+                instruccion_invalida = true;
+                PosicionFisica=TablaSegmentos[0][1]; // Forzar salida
                 break;
         }
         if (((Memoria[PosicionFisica] & 0xF0)>>4) % 2){ // Es de 2 Operando
@@ -471,15 +547,19 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
              Set_Operando_Dissasembler(Operando,Memoria,&PosicionFisica,&acumulador,(PosicionByte & 0xC0) >>6);
         }
         else { // Es de 0 Operandos
-            printf("[%04X] %12X | %s\n",PosicionInstruccion,acumulador,TagMnemonico);
-
+            op0=true;
         }
-    if (op1){
-        printf("[%04X] %12X | %s   %s\n",PosicionInstruccion,acumulador,TagMnemonico,Operando);
-    }
-    else if (op2) {
-        printf("[%04X] %12X | %s   %s, %s\n",PosicionInstruccion,acumulador,TagMnemonico,Operando, Operando2);
-    }
+        if (!instruccion_invalida) {
+            if (op0) {
+                printf("[%04X] %12X | %s\n",PosicionInstruccion,acumulador,TagMnemonico);
+            }
+            else if (op1){
+                printf("[%04X] %12X | %s   %s\n",PosicionInstruccion,acumulador,TagMnemonico,Operando);
+            }
+            else if (op2) {
+                printf("[%04X] %12X | %s   %s, %s\n",PosicionInstruccion,acumulador,TagMnemonico,Operando, Operando2);
+            }
+        }
         PosicionFisica++;
     }
     printf("////// FINAL DISSASEMBLER //////\n\n");

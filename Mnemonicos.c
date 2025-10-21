@@ -57,7 +57,7 @@ void Set_Valor_Memoria(unsigned char Memoria[N],int valor,int Registro, int Regi
     int aux= (Registro & 0x001F0000)>>16;
     int base=TablaSegmentos[((Registros[aux]&0x00FF0000 )>>16)][0] + (Registros[aux]&0x0000FFFF);
     int DireccionFisica= 0;
-    DireccionFisica= base + (Registros[5] & 0x0000FFFF);
+    DireccionFisica= base + (Registro & 0x0000FFFF);
 
     if (DireccionFisica> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1])
         exit(-5);
@@ -118,10 +118,11 @@ void DIV(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
  int aux1 = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
  int aux2 = Get_Valor(Memoria,Registros[6],Registros,TablaSegmentos);
     if (aux2==0) {
+        printf("Division por 0\n");
         exit(-4);
     }
- int resultado = aux1 / aux2;
- int resto = aux1 % aux2;
+    int resultado = aux1 / aux2;
+    int resto = aux1 % aux2;
     Set_Valor(Memoria,Registros[5],Registros,resultado,TablaSegmentos);
     Registros[16] = resto; // AC = resto
     Set_CC(Registros,resultado);
@@ -159,15 +160,15 @@ void SWAP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8
 }
 
 void SHL(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-    int aux= Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
-    int resultado = aux << Get_Valor(Memoria,Registros[6],Registros,TablaSegmentos);
+    unsigned int aux= Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+    unsigned int resultado = aux << Get_Valor(Memoria,Registros[6],Registros,TablaSegmentos);
     Set_Valor(Memoria,Registros[5],Registros,resultado,TablaSegmentos);
     Set_CC(Registros,resultado);
 }
 
 void SHR(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-    int aux= Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
-    int resultado = aux >> Get_Valor(Memoria,Registros[6],Registros,TablaSegmentos);
+    unsigned int aux= Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+    unsigned int resultado = aux >> Get_Valor(Memoria,Registros[6],Registros,TablaSegmentos);
     Set_Valor(Memoria,Registros[5],Registros,resultado,TablaSegmentos);
     Set_CC(Registros,resultado);
 }
@@ -175,6 +176,7 @@ void SHR(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 void SAR(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
     int aux   = Get_Valor(Memoria, Registros[5], Registros, TablaSegmentos);
     int shift = Get_Valor(Memoria, Registros[6], Registros, TablaSegmentos);
+
 
     if (shift >= 32) {
         // Si se desplaza todo, queda solo el signo
@@ -295,8 +297,7 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                 scanf("%32s", binstr); // Leer la cadena binaria
                 num = (int)strtol(binstr, NULL, 2); // Convertir a entero
                 for (j=tamano-1; j>=0; j--) {
-                    Memoria[direccionfisica+j] = num & mascara;
-                    mascara = mascara << 8;
+                    Memoria[direccionfisica+j] = (num >> (8 * (tamano - 1 - j))) & mascara;
                 }
 
             }
@@ -308,8 +309,7 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                     printf("[%04X] ", direccionfisica);
                     scanf("%02x",&num);
                     for (j=tamano-1; j>=0; j--) {
-                        Memoria[direccionfisica+j] = num & mascara;
-                        mascara = mascara << 8;
+                        Memoria[direccionfisica+j] = (num >> (8 * (tamano - 1 - j))) & mascara;
                     }
                 }
             }
@@ -320,8 +320,7 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                         printf("[%04X] ", direccionfisica);
                         scanf("%o",&num);
                         for (j=tamano-1; j>=0; j--) {
-                            Memoria[direccionfisica+j] = num & mascara;
-                            mascara = mascara << 8;
+                            Memoria[direccionfisica+j] = (num >> (8 * (tamano - 1 - j))) & mascara;
                         }
                     }
                 }
@@ -332,8 +331,7 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                             printf("[%04X] ", direccionfisica);
                             scanf("%c",&num);
                             for (j=tamano-1; j>=0; j--) {
-                                Memoria[direccionfisica+j] = num & mascara;
-                                mascara = mascara << 8;
+                                Memoria[direccionfisica+j] = (num >> (8 * (tamano - 1 - j))) & mascara;
                             }
                         }
                    }
@@ -344,8 +342,7 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                                printf("[%04X] ", direccionfisica);
                                scanf("%d",&num);
                                for (j=tamano-1; j>=0; j--) {
-                                   Memoria[direccionfisica+j] = num & mascara;
-                                   mascara = mascara << 8;
+                                   Memoria[direccionfisica+j] = (num >> (8 * (tamano - 1 - j))) & mascara;
                                }
                                direccionfisica+=tamano;
                            }
@@ -363,7 +360,7 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                 print_int_binary(num);
                 putchar(' ');
             }
-            if (modo & 0X80) {   //hecadecimal
+            if (modo & 0X08) {   //hecadecimal
                 num = 0;
                 for (j=0;j<tamano;j++) {
                     num |= (Memoria[direccionfisica + j] << (8 * (tamano - 1 - j)));
@@ -378,11 +375,15 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
                 printf("@%o ", num); // Each octal digit is about 3 bits
             }
             if (modo & 0X02) {   //caracteres
-                num = 0;
+
                 for (j=0;j<tamano;j++) {
-                    num |= (Memoria[direccionfisica + j] << (8 * (tamano - 1 - j)));
+                    num = Memoria[direccionfisica + j];
+                    if (num >= 32 && num <= 126)
+                        printf("%c", num);
+                    else
+                        printf(".");
                 }
-                printf("%c ", num);
+            printf(" ");
             }
             if (modo & 0X01) {   //decimal
                 num = 0;
