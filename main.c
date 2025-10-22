@@ -18,6 +18,7 @@ int main(int argc,char * argv[]) {
     int argvP[100];
     int cuentaPalabra=0;
     int cuentamemoria=0;
+    int TamMem=N;
     unsigned char Memoria[N];
     short int TablaSegmentos[8][2];
     int Registros[32];
@@ -104,6 +105,10 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
         int TamanoSS= (data[12] << 8) | data[13];
         int TamanoConstS= (data[14] << 8) | data[15];
         int OffsetEntry= (data[16] << 8) | data[17];
+        if ((TamanoCs+TamanoDs+TamanoEs+TamanoSS+TamanoConstS)> TamMem) {
+            printf("Memoria insuficiente");
+            exit(-5);
+        }
         if (TablaSegmentos[0][1]) {
             Registros[31]= i<<16;
             i++;
@@ -182,6 +187,18 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
                 break;
             case 8:
                 NOT(Memoria,Registros,TablaSegmentos);
+                break;
+            case 11:
+                PUSH(Memoria,Registros,TablaSegmentos);
+                break;
+            case 12:
+                POP(Memoria,Registros,TablaSegmentos);
+                break;
+            case 13:
+                CALL(Memoria,Registros,TablaSegmentos);
+                break;
+            case 14:
+                RET();
                 break;
             case 15:
                 STOP();
@@ -296,60 +313,73 @@ void Set_OperandoValor(unsigned char Memoria[N],int *Registro, int *direccionFis
 }
 
 
-void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *PosicionFisica,long int *acumulador, int byte) {
+void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *PosicionFisica,long int *acumulador, int byte) {
     short int aux;
     if (byte==3) {  // 3 bytes
         (*PosicionFisica)++;
-                switch (Memoria[*PosicionFisica] & 0x1F) {
-                    case 1:
-                        strcpy(Operando,"[LAR");
-                        break;
-                    case 2:
-                        strcpy(Operando,"[MAR");
-                        break;
-                    case 3:
-                        strcpy(Operando,"[MBR");
-                        break;
-                    case 4:
-                        strcpy(Operando,"[IP");
-                        break;
-                    case 5:
-                        strcpy(Operando,"[OP1");
-                        break;
-                    case 6:
-                        strcpy(Operando,"[OP2");
-                        break;
-                    case 10:
-                        strcpy(Operando,"[EAX");
-                        break;
-                    case 11:
-                        strcpy(Operando,"[EBX");
-                        break;
-                    case 12:
-                        strcpy(Operando,"[ECX");
-                        break;
-                    case 13:
-                        strcpy(Operando,"[EDX");
-                        break;
-                    case 14:
-                        strcpy(Operando,"[EEX");
-                        break;
-                    case 15:
-                        strcpy(Operando,"[EFX");
-                        break;
-                    case 16:
-                        strcpy(Operando,"[AC");
-                        break;
-                    case 17:
-                        strcpy(Operando,"[CC");
-                        break;
-                    case 26:
-                        strcpy(Operando,"[CS");
-                        break;
-                    case 27:
-                        strcpy(Operando,"[");
-                        break;
-                }
+        switch ((Memoria[*PosicionFisica] & 0xC0) >> 6) {
+            case 0:
+                strcpy(Operando,"l");
+                break;
+            case 2:
+                strcpy(Operando,"w");
+                break;
+            case 3:
+                strcpy(Operando,"b");
+                break;
+        }
+        switch (Memoria[*PosicionFisica] & 0x1F) {
+            case 1:
+                strcat(Operando, "[LAR");
+                break;
+            case 2:
+                strcat(Operando, "[MAR");
+                break;
+            case 3:
+                strcat(Operando, "[MBR");
+                break;
+            case 4:
+                strcat(Operando, "[IP");
+                break;
+            case 5:
+                strcat(Operando, "[OP1");
+                break;
+            case 6:
+                strcat(Operando, "[OP2");
+                break;
+            case 10:
+                strcat(Operando, "[EAX");
+                break;
+            case 11:
+                strcat(Operando, "[EBX");
+                break;
+            case 12:
+                strcat(Operando, "[ECX");
+                break;
+            case 13:
+                strcat(Operando, "[EDX");
+                break;
+            case 14:
+                strcat(Operando, "[EEX");
+                break;
+            case 15:
+                strcat(Operando, "[EFX");
+                break;
+            case 16:
+                strcat(Operando, "[AC");
+                break;
+            case 17:
+                strcat(Operando, "[CC");
+                break;
+            case 26:
+                strcat(Operando, "[CS");
+                break;
+            case 27:
+                strcat(Operando, "[");
+                break;
+            default:
+                break;
+        }
                 *acumulador=(*acumulador)<<8 | Memoria[*PosicionFisica];
                 (*PosicionFisica)++;
                 aux=Memoria[*PosicionFisica] <<8;
@@ -401,22 +431,76 @@ void Set_Operando_Dissasembler(char Operando[10],unsigned char Memoria[N], int *
                         strcpy(Operando,"OP2");
                         break;
                     case 10:
-                        strcpy(Operando,"EAX");
+                        if ((Memoria[*PosicionFisica] >> 6 ) == 3)
+                            strcpy(Operando,"AX");
+                        else
+                            if ((Memoria[*PosicionFisica] >> 6) == 2)
+                            strcpy(Operando,"AH");
+                            else
+                                if ((Memoria[*PosicionFisica] >> 6 ) == 1)
+                                    strcpy(Operando,"AL");
+                                else
+                                    strcpy(Operando,"EAX");
                         break;
                     case 11:
-                        strcpy(Operando,"EBX");
+                        if ((Memoria[*PosicionFisica] >> 6 ) == 3)
+                            strcpy(Operando,"BX");
+                        else
+                            if ((Memoria[*PosicionFisica] >> 6) == 2)
+                                strcpy(Operando,"BH");
+                            else
+                                if ((Memoria[*PosicionFisica] >> 6 ) == 1)
+                                    strcpy(Operando,"BL");
+                                else
+                                    strcpy(Operando,"EBX");
                         break;
                     case 12:
-                        strcpy(Operando,"ECX");
+                        if ((Memoria[*PosicionFisica] >> 6 ) == 3)
+                            strcpy(Operando,"CX");
+                        else
+                            if ((Memoria[*PosicionFisica] >> 6) == 2)
+                                strcpy(Operando,"CH");
+                            else
+                                if ((Memoria[*PosicionFisica] >> 6 ) == 1)
+                                    strcpy(Operando,"CL");
+                                else
+                                    strcpy(Operando,"ECX");
                         break;
                     case 13:
-                        strcpy(Operando,"EDX");
+                        if ((Memoria[*PosicionFisica] >> 6 ) == 3)
+                            strcpy(Operando,"DX");
+                        else
+                            if ((Memoria[*PosicionFisica] >> 6) == 2)
+                                strcpy(Operando,"DH");
+                            else
+                                if ((Memoria[*PosicionFisica] >> 6 ) == 1)
+                                    strcpy(Operando,"DL");
+                                else
+                                    strcpy(Operando,"EDX");
                         break;
                     case 14:
-                        strcpy(Operando,"EEX");
+                        if ((Memoria[*PosicionFisica] >> 6 ) == 3)
+                            strcpy(Operando,"EX");
+                        else
+                            if ((Memoria[*PosicionFisica] >> 6) == 2)
+                                strcpy(Operando,"EH");
+                            else
+                                if ((Memoria[*PosicionFisica] >> 6 ) == 1)
+                                    strcpy(Operando,"EL");
+                                else
+                                    strcpy(Operando,"EEX");
                         break;
                     case 15:
-                        strcpy(Operando,"EFX");
+                        if ((Memoria[*PosicionFisica] >> 6 ) == 3)
+                            strcpy(Operando,"FX");
+                        else
+                            if ((Memoria[*PosicionFisica] >> 6 ) == 2)
+                                strcpy(Operando,"FH");
+                            else
+                                if ((Memoria[*PosicionFisica] >> 6 ) == 1)
+                                    strcpy(Operando,"FL");
+                                else
+                                    strcpy(Operando,"EFX");
                         break;
                     case 16:
                         strcpy(Operando,"AC");
@@ -477,6 +561,18 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
                 break;
             case 8:
                 strcpy(TagMnemonico,"NOT");
+                break;
+                case 11:
+                strcpy(TagMnemonico,"PUSH");
+                break;
+            case 12:
+                strcpy(TagMnemonico,"POP");
+                break;
+            case 13:
+                strcpy(TagMnemonico,"CALL");
+                break;
+            case 14:
+                strcpy(TagMnemonico,"RET");
                 break;
             case 15:
                 strcpy(TagMnemonico,"STOP");

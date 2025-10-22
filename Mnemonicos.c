@@ -9,6 +9,8 @@
 #include <string.h>
 #include <stdbool.h>
 #include <ctype.h>
+
+#include "Pila.h"
 #define N 16384
 
 int Get_Valor_Registro(int Registro, int Registros[32]) {
@@ -412,4 +414,81 @@ void print_int_binary(int num) {
 
 void STOP() {
     exit(0);
+}
+
+
+void PUSH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+    Registros[7] -= 4;
+    //Si el valor de SP es menor que el valor del registro SS entonces STACK OVERFLOW
+    int seg = (Registros[7] & 0xFFFF0000) >> 16;
+    int offset = Registros[7] & 0x0000FFFF;
+    int base = TablaSegmentos[seg][0];
+    int limite = TablaSegmentos[seg][1];
+    int direccionFisica = base + offset;
+    if (direccionFisica < base || direccionFisica + 3 > limite) {
+        printf("STACK OVERFLOW");
+        exit(-5);
+    }
+    //Obtener el valor del operando
+    //Almacenar en la pila desde los bytes menos significativos, dejando en el tope el byte mas significativo
+    Set_Valor(Memoria,Registros[7] , Registros, Get_Valor(Memoria, Registros[5], Registros, TablaSegmentos),TablaSegmentos);
+}
+
+
+void POP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+    // Compute segment and offset from SP (SP points to top = most significant byte)
+    int seg = (Registros[7] & 0xFFFF0000) >> 16;
+    int offset = Registros[7] & 0x0000FFFF;
+    int base = TablaSegmentos[seg][0];
+    int limite = TablaSegmentos[seg][1];
+    int direccionFisica = base + offset;
+
+
+    if (direccionFisica < base || direccionFisica + 3 > limite) {
+        printf("STACK UNDERFLOW");
+        exit(-5);
+    }
+
+    Set_Valor(Memoria, Registros[5], Registros, Get_Valor(Memoria,Registros[7],Registros,TablaSegmentos), TablaSegmentos);
+
+    Registros[7] += 4;
+}
+
+void CALL(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {
+    //PUSH IP
+    Registros[7] -= 4;
+    int seg = (Registros[7] & 0xFFFF0000) >> 16;
+    int offset = Registros[7] & 0x0000FFFF;
+    int base = TablaSegmentos[seg][0];
+    int limite = TablaSegmentos[seg][1];
+    int direccionFisica = base + offset;
+
+    if (direccionFisica < base || direccionFisica + 3 > limite) {
+        printf("STACK OVERFLOW");
+        exit(-5);
+    }
+
+    Set_Valor(Memoria,Registros[7] , Registros, Get_Valor(Memoria, Registros[3], Registros, TablaSegmentos),TablaSegmentos);
+
+//JMP SUBRUT
+    int oper = Get_Valor(Memoria, Registros[5], Registros, TablaSegmentos);
+    Registros[3] = (Registros[3] & 0xFFFF0000) | (oper & 0x0000FFFF);
+}
+
+void RET(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+int seg = (Registros[7] & 0xFFFF0000) >> 16;
+    int offset = Registros[7] & 0x0000FFFF;
+    int base = TablaSegmentos[seg][0];
+    int limite = TablaSegmentos[seg][1];
+    int direccionFisica = base + offset;
+
+
+    if (direccionFisica < base || direccionFisica + 3 > limite) {'
+        printf("STACK UNDERFLOW");
+        exit(-5);
+    }
+
+    Set_Valor(Memoria, Registros[3], Registros, Get_Valor(Memoria,Registros[7],Registros,TablaSegmentos), TablaSegmentos);
+
+    Registros[7] += 4;
 }

@@ -5,4 +5,7 @@ set(CMAKE_C_STANDARD 11)
 
 add_executable(MaquinaVirtual2025 main.c
         Mnemonicos.c
-        Mnemonicos.h)
+        Mnemonicos.h
+        Pila.c
+        Pila.h
+)

@@ -35,8 +35,13 @@ bool JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 bool JNN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void NOT(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+void PUSH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+void POP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+void CALL(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+void RET();
 void print_int_binary(int num) ;
 void STOP();
+
 
 void Set_Valor(unsigned char Memoria[N],int Registro,int Registros[32],int valor,short int TablaSegmentos[8][2]);
 void Set_Valor_Registro(int valor,int Registro, int Registros[32]);
