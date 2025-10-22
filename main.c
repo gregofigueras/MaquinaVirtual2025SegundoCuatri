@@ -6,12 +6,14 @@
 #include "Mnemonicos.h"
 #define N 16384
 
-void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32],  short int TablaSegmentos[8][2]);
+void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32],  short int TablaSegmentos[8][2], int TamMem);
 void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]);
-void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2]);
+void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2], int EntryPoint);
 void Set_Instruccion(int Instruccion, int Registros[32]);
 void Set_Operando(unsigned char Memoria[N], int Registros[32], int *direccionFisica);
 void Set_OperandoValor(unsigned char Memoria[N],int *Registro, int *direccionFisica);
+void CargaPila (unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int CuentaPalabras);
+void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *PosicionFisica,long int *acumulador, int byte);
 
 
 int main(int argc,char * argv[]) {
@@ -22,50 +24,59 @@ int main(int argc,char * argv[]) {
     unsigned char Memoria[N];
     short int TablaSegmentos[8][2];
     int Registros[32];
-    bool Dissasembler=true;
-    char DireccionVmx[256];
+    bool Dissasembler=false, VMX=false, VMI=false;
+    char DireccionVmx[256], DireccionVmi[256];
+
+    for (int i=0; i< 32;i++) //Inicializa Registros
+        Registros[i]=-1;
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "-d") == 0) {
+        if (strstr(argv[i], ".vmx") == 0) {
+            strcpy(DireccionVmx, argv[i]);
+            VMX=true;
+        }
+        else if (strstr(argv[i], ".vmi") == 0) {
+            strcpy(DireccionVmi, argv[i]);
+            VMI=true;
+        }
+        else if (strncmp(argv[i], "m=", 2) == 0) {
+            TamMem = atoi(argv[i] + 2);;
+        }
+        else if (strcmp(argv[i], "-d") == 0) { //Dissasembler
             Dissasembler = true;
-        } else {
-            char *ext = strrchr(argv[i], '.');
-            if (ext && strcmp(ext, ".vmx") == 0) {
-                strcpy(DireccionVmx, argv[i]);
-            }
-            if (strcmp(argv[i],"-p")==0) {
-                char Palabra[200];
-                i++;
-                for (;i<argc;i++) {
-                    argvP[cuentaPalabra]=cuentamemoria;
-                    strcpy(Palabra, argv[i]);
-                    for (int j=0 ;strlen(Palabra) >= j;j++) {
-                        Memoria[cuentamemoria] = Palabra[j];
-                        cuentamemoria++;
-                    }
-                    cuentaPalabra++;
-                }
-                for (i=0;i<=cuentaPalabra;i++) {
-                    Memoria[cuentamemoria]= argvP[i] & 0xFF000000;
-                    Memoria[++cuentamemoria]= argvP[i] & 0x00FF0000;
-                    Memoria[++cuentamemoria]= argvP[i] & 0x0000FF00;
-                    Memoria[++cuentamemoria]= argvP[i] & 0x000000FF;
+        }
+        else if (strcmp(argv[i],"-p")==0) { //Parametros
+            char Palabra[200];
+            i++;
+            for (;i<argc;i++) {
+                argvP[cuentaPalabra]=cuentamemoria;
+                strcpy(Palabra, argv[i]);
+                for (int j=0 ;strlen(Palabra) >= j;j++) {
+                    Memoria[cuentamemoria] = Palabra[j];
                     cuentamemoria++;
                 }
-                TablaSegmentos[0][0]=0x0000;
-                TablaSegmentos[0][1]=cuentamemoria;
-                TablaSegmentos[1][0]=cuentamemoria;
+                cuentaPalabra++;
             }
+            for (i=0;i<=cuentaPalabra;i++) {
+                Memoria[cuentamemoria]= argvP[i] & 0xFF000000;
+                Memoria[++cuentamemoria]= argvP[i] & 0x00FF0000;
+                Memoria[++cuentamemoria]= argvP[i] & 0x0000FF00;
+                Memoria[++cuentamemoria]= argvP[i] & 0x000000FF;
+                cuentamemoria++;
+            }
+            TablaSegmentos[0][0]=0x0000;
+            TablaSegmentos[0][1]=cuentamemoria;
+            TablaSegmentos[1][0]=cuentamemoria;
         }
     }
-
-    CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos);
+    CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos,TamMem);
+    CargaPila(Memoria,Registros,TablaSegmentos,cuentamemoria);
     if (Dissasembler)
-        Imprimir_Dissasembler(Memoria,TablaSegmentos);
+        Imprimir_Dissasembler(Memoria,TablaSegmentos,Registros[3]);
     ProcesarInstrucciones(Memoria,Registros,TablaSegmentos);
     return 0;
 }
 
-void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {
+void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int TamMem) {
     FILE *Archivo;
     int i = 0;
     Archivo = fopen("sample2.vmx", "rb");
@@ -143,6 +154,7 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
             Registros[29]= i<<16;
             TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
             TablaSegmentos[i][1]= TamanoSS;
+            Registros[7]= Registros[29] | TamanoSS; // SP = SS:limite
         }
     }
 }
@@ -151,7 +163,6 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
     int aux;
     int direccionFisica=TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][0];
     bool jump;
-
     for (;direccionFisica<TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][1];) {
         jump = false; // Salto
         aux=Memoria[direccionFisica];
@@ -521,14 +532,18 @@ void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *
 
 
 
-void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2]) {
-    char TagMnemonico[6]; char Operando[10]; char Operando2[10];
-    int PosicionFisica=0, PosicionInstruccion,aux;
+void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2], int EntryPoint) {
+
+    char TagMnemonico[6]; char Operando[11]; char Operando2[11];
+    int PosicionFisica, PosicionInstruccion,aux;
     long int acumulador=0;
     int PosicionByte;
     bool instruccion_invalida = false;
     bool op1=false,op2=false,op0=false;
+    PosicionFisica= TablaSegmentos[(EntryPoint & 0xFFFF0000)>>16][0] + (EntryPoint & 0x0000FFFF);
+    printf(">");
     while (PosicionFisica<TablaSegmentos[0][1]) {
+
         PosicionInstruccion=PosicionFisica;
         acumulador=Memoria[PosicionFisica];
         op0=false;
@@ -659,4 +674,21 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
         PosicionFisica++;
     }
     printf("////// FINAL DISSASEMBLER //////\n\n");
+}
+
+void CargaPila (unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int CuentaPalabras) {
+    int DirFisica= TablaSegmentos[Registros[7]>>16][0] + (Registros[7] & 0x0000FFFF);
+    Memoria[--DirFisica]=(Registros[31] & 0x000000FF);
+    Memoria[--DirFisica]= (Registros[31] & 0x0000FF00) >>8;
+    Memoria[--DirFisica]= (Registros[31] & 0x00FF0000) >>16;
+    Memoria[--DirFisica]= (Registros[31] & 0xFF000000) >>24;
+    Memoria[--DirFisica]= (CuentaPalabras & 0x000000FF);
+    Memoria[--DirFisica]= (CuentaPalabras & 0x0000FF00) >>8;
+    Memoria[--DirFisica]= (CuentaPalabras & 0x00FF0000) >>16;
+    Memoria[--DirFisica]= (CuentaPalabras & 0xFF000000) >>24;
+    Memoria[--DirFisica]= (-1 & 0x000000FF);
+    Memoria[--DirFisica]= (-1 & 0x0000FF00) >>8;
+    Memoria[--DirFisica]= (-1 & 0x00FF0000) >>16;
+    Memoria[--DirFisica]= (-1 & 0xFF000000) >>24;
+    Registros[7]-=12; // Actualiza SP
 }

@@ -14,7 +14,15 @@
 #define N 16384
 
 int Get_Valor_Registro(int Registro, int Registros[32]) {
-    return Registros[Registro & 0x000000FF];
+    if (((Registro & 0x000C0000) >> 18 )== 0) // Extended
+        return Registros[Registro & 0x0000001F];
+    if (((Registro & 0x000C0000) >> 18)==1) //Low
+        return Registros[Registro & 0x0000001F] & 0x000000FF;
+    if (((Registro & 0x000C0000) >> 18) ==2) // High
+        return (Registros[Registro & 0x0000001F] & 0x0000FF00)>>16;
+    if (((Registro & 0x000C0000) >> 18) ==3) // X
+        return (Registros[Registro & 0x0000001F] & 0x0000FFFF);
+
 }
 
 int Get_Valor_Inmediato(int Registro) {
@@ -25,11 +33,27 @@ int Get_Valor_Inmediato(int Registro) {
 
 int Get_Valor_Memoria(unsigned char Memoria[N], int Registro, int Registros[32], short int TablaSegmentos[8][2]) {
     int aux= (Registro & 0x001F0000)>>16;
+    int tam = (Registro & 0x000C0000) >>18;
     int base=TablaSegmentos[(Registros[aux]&0x00FF0000)>>16][0] + (Registros[aux]&0x0000FFFF);
 
     int DireccionFisica= base + Registro & 0x0000FFFF;
-    return (Memoria[DireccionFisica]<<24) | (Memoria[DireccionFisica+1]<<16) | (Memoria[DireccionFisica+2]<< 8) | Memoria[DireccionFisica+3];
-
+    if (tam==0) {//long
+        if (DireccionFisica+3> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1] + TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][0])
+            exit(-5);
+        return (Memoria[DireccionFisica]<<24) | (Memoria[DireccionFisica+1]<<16) | (Memoria[DireccionFisica+2]<< 8) | Memoria[DireccionFisica+3];
+    }
+    if (tam==2) { //word
+        if (DireccionFisica+1> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1] + TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][0])
+            exit(-5);
+        short int valor= (Memoria[DireccionFisica]<<8) | Memoria[DireccionFisica+1];
+        return (int)valor; // Signo extendido
+    }
+    if (tam==3) { //byte
+        if (DireccionFisica> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1] + TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][0])
+            exit(-5);
+        char valor= Memoria[DireccionFisica];
+        return (int)valor; // Signo extendido
+    }
 }
 
 int Get_Valor(unsigned char Memoria[N], int Registro, int Registros[32],short int TablaSegmentos[8][2]) {
