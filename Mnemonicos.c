@@ -307,9 +307,10 @@ void NOT(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 }
 
 void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-    int direccionfisica = TablaSegmentos[((Registros[13] & 0xFFFF0000) >> 16)][0] + (Registros[13] & 0x0000FFFF);
-    int modo = Registros[10] & 0x000000FF; // 1 byte
-    int celdas = Registros[12] & 0x0000FFFF;
+    int direccionfisica = TablaSegmentos[((Registros[13] & 0xFFFF0000) >> 16)][0] + (Registros[13] & 0x0000FFFF);  //EDX
+    int modo = Registros[10] & 0x000000FF; // 1 byte EAX
+    int celdas = Registros[12] & 0x0000FFFF;  //ECX  celdas = cant max de caracteres a leer en tipo 3
+    char lectura[256];  //se utilizar para leer en tipo 3
     int tamano = (Registros[12] & 0xFFFF0000) >> 16;
     int tipo = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
     int i,j,num;
@@ -422,6 +423,27 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
             printf("\n");
         }
     }
+    else if (tipo == 3) {  //STRING READ
+        fgets(lectura, celdas, stdin);  //lee hasta la cant max de caracteres permitido y luego guarda \0
+        for (i=0; i<strlen(lectura); i++) {
+            Memoria[direccionfisica + i] = lectura[i];
+        }
+    }
+    else if (tipo == 4) {  //STRING WRITE
+        for (i=0; i<celdas; i++) {
+            char ch = Memoria[direccionfisica + i];
+            if (ch == '\0')
+              putchar('\n');
+            else
+                putchar(ch);
+        }
+    }
+    else if (tipo == 7) {
+        system("clear");
+    }
+    else if (tipo == 'F') {
+
+    }
 }
 
 
@@ -507,7 +529,7 @@ int seg = (Registros[7] & 0xFFFF0000) >> 16;
     int direccionFisica = base + offset;
 
 
-    if (direccionFisica < base || direccionFisica + 3 > limite) {'
+    if (direccionFisica < base || direccionFisica + 3 > limite) {
         printf("STACK UNDERFLOW");
         exit(-5);
     }
