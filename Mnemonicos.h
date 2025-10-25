@@ -23,7 +23,6 @@ void SHL(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 void SHR(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void SAR(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void RND(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void LDH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void LDL(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 bool JMP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
@@ -34,7 +33,7 @@ bool JNZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 bool JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 bool JNN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void NOT(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
-void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
+void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2], char DireccionVmi[256],short int TamMemoria, int *breakpoint);
 void PUSH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void POP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
 void CALL(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]);
@@ -46,3 +45,4 @@ void STOP();
 void Set_Valor(unsigned char Memoria[N],int Registro,int Registros[32],int valor,short int TablaSegmentos[8][2]);
 void Set_Valor_Registro(int valor,int Registro, int Registros[32]);
 void Set_Valor_Memoria(unsigned char Memoria[N], int valor,int Registro, int Registros[32],short int TablaSegmentos[8][2]);
+void CrearVmi (char DireccionVmi[256], unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2],short int TamMemoria);

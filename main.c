@@ -7,7 +7,8 @@
 #define N 16384
 
 void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32],  short int TablaSegmentos[8][2], int TamMem);
-void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]);
+void CargaVMI(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int TamMem);
+void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], char DireccionVmi[256],short int TamMemoria);
 void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2], int EntryPoint);
 void Set_Instruccion(int Instruccion, int Registros[32]);
 void Set_Operando(unsigned char Memoria[N], int Registros[32], int *direccionFisica);
@@ -20,13 +21,13 @@ int main(int argc,char * argv[]) {
     int argvP[100];
     int cuentaPalabra=0;
     int cuentamemoria=0;
-    int TamMem=N;
+    int TamMemoria=N;
     unsigned char Memoria[N];
     short int TablaSegmentos[8][2];
     int Registros[32];
-    bool Dissasembler=false, VMX=false, VMI=false;
+    bool Dissasembler=false, VMX=false;
     char DireccionVmx[256], DireccionVmi[256];
-
+    strcpy(DireccionVmi,"");
     for (int i=0; i< 32;i++) //Inicializa Registros
         Registros[i]=-1;
     for (int i = 1; i < argc; i++) {
@@ -36,10 +37,9 @@ int main(int argc,char * argv[]) {
         }
         else if (strstr(argv[i], ".vmi") == 0) {
             strcpy(DireccionVmi, argv[i]);
-            VMI=true;
         }
         else if (strncmp(argv[i], "m=", 2) == 0) {
-            TamMem = atoi(argv[i] + 2);;
+            TamMemoria = atoi(argv[i] + 2);;
         }
         else if (strcmp(argv[i], "-d") == 0) { //Dissasembler
             Dissasembler = true;
@@ -68,18 +68,22 @@ int main(int argc,char * argv[]) {
             TablaSegmentos[1][0]=cuentamemoria;
         }
     }
-    CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos,TamMem);
-    CargaPila(Memoria,Registros,TablaSegmentos,cuentamemoria);
+    if (VMX) {
+        CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos,TamMemoria);
+        CargaPila(Memoria,Registros,TablaSegmentos,cuentamemoria);
+    }
+    else
+        CargaVMI(DireccionVmi, Memoria,Registros,TablaSegmentos,TamMemoria);
     if (Dissasembler)
         Imprimir_Dissasembler(Memoria,TablaSegmentos,Registros[3]);
-    ProcesarInstrucciones(Memoria,Registros,TablaSegmentos);
+    ProcesarInstrucciones(Memoria,Registros,TablaSegmentos, DireccionVmi,TamMemoria);
     return 0;
 }
 
 void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int TamMem) {
     FILE *Archivo;
     int i = 0;
-    Archivo = fopen("sample2.vmx", "rb");
+    Archivo = fopen(NombreArchivo, "rb");
     if (Archivo == NULL) {
         printf("Error al abrir el archivo.\n");
         return;
@@ -159,9 +163,50 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
     }
 }
 
-void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2]) {;
-    int aux;
-    int direccionFisica=TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][0];
+
+void CargaVMI(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int TamMem){
+    FILE *Archivo;
+    int i = 0;
+    Archivo = fopen(NombreArchivo, "rb");
+    if (Archivo == NULL) {
+        printf("Error al abrir el archivo.\n");
+        return;
+    }
+
+    fseek(Archivo,0,SEEK_END);
+    int TamanoArchivo= ftell(Archivo);
+    unsigned char data[TamanoArchivo];
+    fseek(Archivo,0,SEEK_SET);
+    fread(data, 1, TamanoArchivo, Archivo);
+    int TamanoMemoria= data[6] <<8 + data[7];
+    fclose(Archivo);
+    if ((TamanoMemoria)> TamMem)
+        printf("Memoria insuficiente");
+    int k=8;
+    for (i=0; i<32;i++) { // Registros
+        for (int j=3; j>=0; j--){
+            Registros[i]=data[k] << j*8;
+            k++;
+        }
+    }
+    for (i=0; i<8; i++) { //Tabla Segmentos
+        for (int j=0; j<2; j++) {
+            for (int q=1; q>=0; q--) {
+                TablaSegmentos[i][j]= data[k] << q*8;
+                k++;
+            }
+        }
+    }
+    i=0;
+    for (k=167; k<TamanoMemoria; k++) { //Carga Memoria
+        Memoria[i]=data[k];
+    }
+
+}
+
+void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], char DireccionVmi[256],short int TamMemoria) {;
+    int aux,breakpoint=0;
+    int direccionFisica=TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][0] + (Registros[3] & 0x0000FFFF);
     bool jump;
     for (;direccionFisica<TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][1];) {
         jump = false; // Salto
@@ -173,7 +218,7 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
 
         switch (Registros[4] & 0x000000FF) {
             case 0:
-                SYS(Memoria,Registros,TablaSegmentos);
+                SYS(Memoria,Registros,TablaSegmentos,DireccionVmi,TamMemoria,&breakpoint);
                 break;
             case 1:
                 jump = JMP(Memoria,Registros,TablaSegmentos);
@@ -271,6 +316,12 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
             direccionFisica = TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][0] + (Registros[3] & 0x0000FFFF);
         else
             direccionFisica++;
+        if (breakpoint==2) {
+            breakpoint=0;
+            SYS(Memoria,Registros,TablaSegmentos,DireccionVmi,TamMemoria,&breakpoint);
+        }
+        else if (breakpoint==1)
+            breakpoint==2;
     }
     printf("");
 }

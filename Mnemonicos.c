@@ -306,7 +306,7 @@ void NOT(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
     Set_CC(Registros,aux);
 }
 
-void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
+void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2], char DireccionVmi[256],short int TamMemoria, int *breakpoint) {
     int direccionfisica = TablaSegmentos[((Registros[13] & 0xFFFF0000) >> 16)][0] + (Registros[13] & 0x0000FFFF);  //EDX
     int modo = Registros[10] & 0x000000FF; // 1 byte EAX
     int celdas = Registros[12] & 0x0000FFFF;  //ECX  celdas = cant max de caracteres a leer en tipo 3
@@ -441,8 +441,18 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
     else if (tipo == 7) {
         system("clear");
     }
-    else if (tipo == 'F') {
-
+    else if (tipo == 'F' && strcmp(DireccionVmi,"")!=0) {
+        char c;
+        CrearVmi(DireccionVmi,Memoria,Registros,TablaSegmentos,TamMemoria);
+        do
+            scanf("%c",&c);
+        while (c!='\n' | c!='q' || c!='g');
+        if (c=='q')
+            exit(0);
+        if (c=='\n')
+            *breakpoint=1;
+        if (c=='g')
+            *breakpoint=0;
     }
 }
 
@@ -537,4 +547,17 @@ int seg = (Registros[7] & 0xFFFF0000) >> 16;
     Set_Valor(Memoria, Registros[3], Registros, Get_Valor(Memoria,Registros[7],Registros,TablaSegmentos), TablaSegmentos);
 
     Registros[7] += 4;
+}
+
+void CrearVmi (char DireccionVmi[256], unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2],short int TamMemoria) {
+    FILE *Archivo;
+    int i=0,j;
+    Archivo = fopen(DireccionVmi, "wb");
+    fwrite("VMX25",5,1,Archivo);
+    fwrite("2",1,1,Archivo);
+    fwrite (&TamMemoria, 2,1, Archivo);
+    fwrite(Registros,sizeof(int),32, Archivo);
+    fwrite(TablaSegmentos, sizeof(short int),16, Archivo);
+    fwrite(Memoria, sizeof(unsigned char),TamMemoria, Archivo);
+    fclose(Archivo);
 }
