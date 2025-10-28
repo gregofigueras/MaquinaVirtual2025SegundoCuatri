@@ -609,7 +609,7 @@ void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *
 void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2], int EntryPoint, int Registros[32]) {
 
     char TagMnemonico[6]; char Operando[11]; char Operando2[11];
-    int PosicionFisica, PosicionInstruccion,aux;
+    int PosicionFisica, PosicionInstruccion,CuentaCaracteres;
     long int acumulador=0;
     int PosicionByte;
     bool instruccion_invalida = false;
