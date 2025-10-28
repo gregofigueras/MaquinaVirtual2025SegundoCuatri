@@ -242,14 +242,14 @@ void LDL(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 }
 
 bool JMP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-    Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+    Registros[3] = (Registros[3] & 0xFFFF0000) | Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
     return true;
 }
 
 bool JZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
  if (Registros[17] & 0x40000000) {
      // Z=1
-     Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+     Registros[3] = (Registros[3] & 0xFFFF0000) | Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
      return true;
  }
     return false;
@@ -257,7 +257,7 @@ bool JZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][
 
 bool JP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
     if (!(Registros[17] & 0xC0000000)) {
-        Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+        Registros[3] = (Registros[3] & 0xFFFF0000) | Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
         return true;
     }
     return false;
@@ -266,7 +266,7 @@ bool JP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][
 bool JN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
     if (Registros[17] & 0x80000000) {
         // N=1
-        Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+        Registros[3] = (Registros[3] & 0xFFFF0000) | Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
         return true;
     }
     return false;
@@ -275,7 +275,7 @@ bool JN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][
 bool JNZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
     if (!(Registros[17] & 0x40000000)) {
         // Z=0
-        Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+        Registros[3] = (Registros[3] & 0xFFFF0000) | Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
         return true;
     }
     return false;
@@ -284,7 +284,7 @@ bool JNZ(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 bool JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
    if (Registros[17] & 0xC0000000) {
        // N!=0 | Z!=0
-       Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+       Registros[3] = (Registros[3] & 0xFFFF0000) | Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
        return true;
    }
     return false;
@@ -293,7 +293,7 @@ bool JNP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
 bool JNN(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
    if (!(Registros[17] & 0x80000000)) {
        // N=0
-       Registros[3] = Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
+       Registros[3] = (Registros[3] & 0xFFFF0000) | Get_Valor(Memoria,Registros[5],Registros,TablaSegmentos);
        return true;
    }
     return false;
@@ -430,12 +430,11 @@ void SYS(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
         }
     }
     else if (tipo == 4) {  //STRING WRITE
-        for (i=0; i<celdas; i++) {
-            char ch = Memoria[direccionfisica + i];
-            if (ch == '\0')
-              putchar('\n');
-            else
-                putchar(ch);
+        char ch = Memoria[direccionfisica];
+        while (ch!= '\0') {
+            putchar(ch);
+            direccionfisica++;
+            ch = Memoria[direccionfisica];
         }
     }
     else if (tipo == 7) {

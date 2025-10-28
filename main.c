@@ -9,7 +9,7 @@
 void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32],  short int TablaSegmentos[8][2], int TamMem);
 void CargaVMI(char NombreArchivo[256], unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int TamMem);
 void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], char DireccionVmi[256],short int TamMemoria);
-void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2], int EntryPoint);
+void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2], int EntryPoint,int Registros[32]);
 void Set_Instruccion(int Instruccion, int Registros[32]);
 void Set_Operando(unsigned char Memoria[N], int Registros[32], int *direccionFisica);
 void Set_OperandoValor(unsigned char Memoria[N],int *Registro, int *direccionFisica);
@@ -25,9 +25,10 @@ int main(int argc,char * argv[]) {
     unsigned char Memoria[N];
     short int TablaSegmentos[8][2];
     int Registros[32];
-    bool Dissasembler=false, VMX=false;
+    bool Dissasembler=true, VMX=true;
     char DireccionVmx[256], DireccionVmi[256];
-    strcpy(DireccionVmi,"");
+    strcpy(DireccionVmx,"sample4.vmx");
+    strcpy(DireccionVmi,"sample1.vmi");
     for (int i=0; i< 32;i++) //Inicializa Registros
         Registros[i]=-1;
     for (int i = 1; i < argc; i++) {
@@ -75,7 +76,7 @@ int main(int argc,char * argv[]) {
     else
         CargaVMI(DireccionVmi, Memoria,Registros,TablaSegmentos,TamMemoria);
     if (Dissasembler)
-        Imprimir_Dissasembler(Memoria,TablaSegmentos,Registros[3]);
+        Imprimir_Dissasembler(Memoria,TablaSegmentos,Registros[3],Registros);
     ProcesarInstrucciones(Memoria,Registros,TablaSegmentos, DireccionVmi,TamMemoria);
     return 0;
 }
@@ -130,26 +131,43 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
         }
         if (TamanoConstS) {
             Registros[30]= i<<16;
-            TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
-            TablaSegmentos[i][1]= TamanoConstS;
+            if (i==0) {
+                TablaSegmentos[i][0]=0;
+                TablaSegmentos[i][1]=TamanoConstS;
+            }
+            else {
+                TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
+                TablaSegmentos[i][1]= TamanoConstS;
+            }
+            int j=TamanoArchivo-TamanoConstS;
+            for (int i=0; i<TamanoConstS;i++) {
+                Memoria[i]= data[j];
+                j++;
+            }
             i++;
         }
         if (TamanoCs) {
             if (OffsetEntry)
-                Registros[3]= i<<16 + (OffsetEntry & 0x0000FFFF);
-            Registros[26]== i<<16;
-            TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
-            TablaSegmentos[i][1]= TamanoCs;
+                Registros[3]= i<<16 | (OffsetEntry & 0x0000FFFF);
+            Registros[26]= i<<16;
+            if (i==0) {
+                TablaSegmentos[i][0]=0;
+                TablaSegmentos[i][1]=TamanoCs;
+            }
+            else {
+                TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
+                TablaSegmentos[i][1]= TamanoCs;
+            }
             i++;
         }
         if (TamanoDs) {
-            Registros[27] == i<<16;
+            Registros[27] = i<<16;
             TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
             TablaSegmentos[i][1]= TamanoDs;
             i++;
         }
         if (TamanoEs) {
-            Registros[28]== i<<16;
+            Registros[28]= i<<16;
             TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
             TablaSegmentos[i][1]= TamanoEs;
             i++;
@@ -159,6 +177,11 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
             TablaSegmentos[i][0]= TablaSegmentos[i-1][0]+ TablaSegmentos[i-1][1];
             TablaSegmentos[i][1]= TamanoSS;
             Registros[7]= Registros[29] | TamanoSS; // SP = SS:limite
+        }
+        int j=TamanoConstS;
+        for (i=18; i<TamanoArchivo-TamanoConstS;i++) {
+            Memoria[j]=data[i];
+            j++;
         }
     }
 }
@@ -208,7 +231,7 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
     int aux,breakpoint=0;
     int direccionFisica=TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][0] + (Registros[3] & 0x0000FFFF);
     bool jump;
-    for (;direccionFisica<TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][1];) {
+    for (;direccionFisica<TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][1]+TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][0];) {
         jump = false; // Salto
         aux=Memoria[direccionFisica];
         Set_Instruccion(aux,Registros);  // Mueve IP
@@ -583,7 +606,7 @@ void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *
 
 
 
-void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2], int EntryPoint) {
+void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8][2], int EntryPoint, int Registros[32]) {
 
     char TagMnemonico[6]; char Operando[11]; char Operando2[11];
     int PosicionFisica, PosicionInstruccion,aux;
@@ -591,106 +614,69 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
     int PosicionByte;
     bool instruccion_invalida = false;
     bool op1=false,op2=false,op0=false;
-    PosicionFisica= TablaSegmentos[(EntryPoint & 0xFFFF0000)>>16][0] + (EntryPoint & 0x0000FFFF);
-    printf(">");
-    while (PosicionFisica<TablaSegmentos[0][1]) {
+    PosicionFisica= TablaSegmentos[Registros[26]>>16][0];
+    unsigned char AcumulaCaracteres[256];
+    // Imprimir Caracteres Constantes
+    for (int i=TablaSegmentos[(Registros[30] & 0xFFFF0000)>>16][0]; i< TablaSegmentos[(Registros[30]& 0xFFFF0000)>>16][1];i++) {
+        memset(AcumulaCaracteres, 0, sizeof AcumulaCaracteres);
+        CuentaCaracteres=0;
+        acumulador=0;
+        PosicionInstruccion=i;
+        while (Memoria[i]!='\0' && i< TablaSegmentos[(Registros[30]& 0xFFFF0000)>>16][1]) {
+            if (Memoria[i]>=32 && Memoria[i]<=126)
+                AcumulaCaracteres[CuentaCaracteres]=Memoria[i];
+            else
+                AcumulaCaracteres[CuentaCaracteres] = '.';
 
+            acumulador=(acumulador<<8) | Memoria[i];
+            CuentaCaracteres++;
+            i++;
+        }
+        if (CuentaCaracteres<7)
+            printf("[%04X] %014X | \"%s\" \n",PosicionInstruccion,acumulador,AcumulaCaracteres);
+        else
+            printf("[%04X] %012X.. | \"%s\" \n",PosicionInstruccion,acumulador,AcumulaCaracteres);
+    }
+    // Imprimir Instrucciones
+    while (PosicionFisica<TablaSegmentos[(Registros[26] & 0xFFFF0000)>>16][1]+TablaSegmentos[(Registros[26] & 0xFFFF0000)>>16][0]) {
+        if (PosicionFisica==(EntryPoint & 0x0000FFFF) + TablaSegmentos[(Registros[26] & 0xFFFF0000)>>16][0])
+            printf(">");
         PosicionInstruccion=PosicionFisica;
         acumulador=Memoria[PosicionFisica];
         op0=false;
         op1=false;
         op2=false;
         switch (Memoria[PosicionFisica] & 0x1F) {
-            case 0:
-                strcpy(TagMnemonico,"SYS");
-                break;
-            case 1:
-                strcpy(TagMnemonico,"JMP");
-                break;
-            case 2:
-                strcpy(TagMnemonico,"JZ");
-                break;
-            case 3:
-                strcpy(TagMnemonico,"JP");
-                break;
-            case 4:
-                strcpy(TagMnemonico,"JN");
-                break;
-            case 5:
-                strcpy(TagMnemonico,"JNZ");
-                break;
-            case 6:
-                strcpy(TagMnemonico,"JNP");
-                break;
-            case 7:
-                strcpy(TagMnemonico,"JNN");
-                break;
-            case 8:
-                strcpy(TagMnemonico,"NOT");
-                break;
-                case 11:
-                strcpy(TagMnemonico,"PUSH");
-                break;
-            case 12:
-                strcpy(TagMnemonico,"POP");
-                break;
-            case 13:
-                strcpy(TagMnemonico,"CALL");
-                break;
-            case 14:
-                strcpy(TagMnemonico,"RET");
-                break;
-            case 15:
-                strcpy(TagMnemonico,"STOP");
-                break;
-            case 16:
-                strcpy(TagMnemonico,"MOV");
-                break;
-            case 17:
-                strcpy(TagMnemonico,"ADD");
-                break;
-            case 18:
-                strcpy(TagMnemonico,"SUB");
-                break;
-            case 19:
-                strcpy(TagMnemonico,"MUL");
-                break;
-            case 20:
-                strcpy(TagMnemonico,"DIV");
-                break;
-            case 21:
-                strcpy(TagMnemonico,"CMP");
-                break;
-            case 22:
-                strcpy(TagMnemonico,"SHL");
-                break;
-            case 23:
-                strcpy(TagMnemonico,"SHR");
-                break;
-            case 24:
-                strcpy(TagMnemonico,"SAR");
-                break;
-            case 25:
-                strcpy(TagMnemonico,"AND");
-                break;
-            case 26:
-                strcpy(TagMnemonico,"OR");
-                break;
-            case 27:
-                strcpy(TagMnemonico,"XOR");
-                break;
-            case 28:
-                strcpy(TagMnemonico,"SWAP");
-                break;
-            case 29:
-                strcpy(TagMnemonico,"LDL");
-                break;
-            case 30:
-                strcpy(TagMnemonico,"LDH");
-                break;
-            case 31:
-                strcpy(TagMnemonico,"RND");
-                break;
+            case 0: strcpy(TagMnemonico,"SYS"); break;
+            case 1: strcpy(TagMnemonico,"JMP"); break;
+            case 2: strcpy(TagMnemonico,"JZ"); break;
+            case 3: strcpy(TagMnemonico,"JP"); break;
+            case 4: strcpy(TagMnemonico,"JN"); break;
+            case 5: strcpy(TagMnemonico,"JNZ"); break;
+            case 6: strcpy(TagMnemonico,"JNP"); break;
+            case 7: strcpy(TagMnemonico,"JNN"); break;
+            case 8: strcpy(TagMnemonico,"NOT"); break;
+            case 11: strcpy(TagMnemonico,"PUSH"); break;
+            case 12: strcpy(TagMnemonico,"POP"); break;
+            case 13: strcpy(TagMnemonico,"CALL"); break;
+            case 14: strcpy(TagMnemonico,"RET"); break;
+            case 15: strcpy(TagMnemonico,"STOP"); break;
+            case 16: strcpy(TagMnemonico,"MOV"); break;
+            case 17: strcpy(TagMnemonico,"ADD"); break;
+            case 18: strcpy(TagMnemonico,"SUB"); break;
+            case 19: strcpy(TagMnemonico,"MUL"); break;
+            case 20: strcpy(TagMnemonico,"DIV"); break;
+            case 21: strcpy(TagMnemonico,"CMP"); break;
+            case 22: strcpy(TagMnemonico,"SHL"); break;
+            case 23: strcpy(TagMnemonico,"SHR"); break;
+            case 24: strcpy(TagMnemonico,"SAR"); break;
+            case 25: strcpy(TagMnemonico,"AND"); break;
+            case 26: strcpy(TagMnemonico,"OR"); break;
+            case 27: strcpy(TagMnemonico,"XOR"); break;
+            case 28: strcpy(TagMnemonico,"SWAP"); break;
+            case 29: strcpy(TagMnemonico,"LDL"); break;
+            case 30: strcpy(TagMnemonico,"LDH"); break;
+            case 31: strcpy(TagMnemonico,"RND"); break;
             default:
                 printf("\n INSTRUCCION INVALIDA \n");
                 instruccion_invalida = true;
