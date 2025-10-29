@@ -33,7 +33,7 @@ int Get_Valor_Inmediato(int Registro) {
 
 int Get_Valor_Memoria(unsigned char Memoria[N], int Registro, int Registros[32], short int TablaSegmentos[8][2]) {
     int aux= (Registro & 0x001F0000)>>16;
-    int tam = (Registro & 0x000C0000) >>18;
+    int tam = (Registro & 0x00C00000) >> 22;
     int base=TablaSegmentos[(Registros[aux]&0x00FF0000)>>16][0] + (Registros[aux]&0x0000FFFF);
 
     int DireccionFisica= base + Registro & 0x0000FFFF;
@@ -71,8 +71,20 @@ void Set_Valor(unsigned char Memoria[N],int Registro,int Registros[32],int valor
         Set_Valor_Registro(valor,Registro,Registros);
     else if (((Registro & 0xFF000000) >>24) == 3)
         Set_Valor_Memoria(Memoria,valor,Registro,Registros,TablaSegmentos);
+}
 
+void Set_Valor_Pila(unsigned char Memoria[N], int Registro, int Registros[32], int valor, short int TablaSegmentos[8][2]) {
+    int direccion= TablaSegmentos[(Registro & 0xFF0000)>>16][0] + Registro & 0x00FFFF;
+    Memoria[direccion]= (valor & 0x000000FF);
+    Memoria[direccion+1]= (valor & 0x0000FF00)>>8;
+    Memoria[direccion+2]= (valor & 0x00FF0000)>>16;
+    Memoria[direccion+3]= (valor & 0xFF000000)>>24;
+}
 
+int Get_Valor_Pila(unsigned char Memoria[N], int Registro, int Registros[32], short int TablaSegmentos[8][2]){
+    int direccion= TablaSegmentos[(Registro & 0xFF0000)>>16][0] + Registro & 0x00FFFF;
+    int valor =  (Memoria[direccion-3]<<24) | (Memoria[direccion-2]<<16) | (Memoria[direccion-1]<<8) | Memoria[direccion];
+    return valor;
 }
 
 void Set_Valor_Registro(int valor,int Registro, int Registros[32]) {
@@ -82,17 +94,24 @@ void Set_Valor_Registro(int valor,int Registro, int Registros[32]) {
 void Set_Valor_Memoria(unsigned char Memoria[N],int valor,int Registro, int Registros[32],short int TablaSegmentos[8][2]) {
     int aux= (Registro & 0x001F0000)>>16;
     int base=TablaSegmentos[((Registros[aux]&0x00FF0000 )>>16)][0] + (Registros[aux]&0x0000FFFF);
+    int tam = (Registro & 0x00C00000) >> 22;
     int DireccionFisica= 0;
     DireccionFisica= base + (Registro & 0x0000FFFF);
 
     if (DireccionFisica> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1])
         exit(-5);
-
-    Memoria[DireccionFisica]= (valor & 0xFF000000)>>24;
-    Memoria[DireccionFisica+1]= (valor & 0x00FF0000)>>16;
-    Memoria[DireccionFisica+2]= (valor & 0x0000FF00)>>8;
-    Memoria[DireccionFisica+3]= (valor & 0x000000FF);
-
+    if (tam == 0) { //long
+        Memoria[DireccionFisica]= (valor & 0xFF000000)>>24;
+        Memoria[DireccionFisica+1]= (valor & 0x00FF0000)>>16;
+        Memoria[DireccionFisica+2]= (valor & 0x0000FF00)>>8;
+        Memoria[DireccionFisica+3]= (valor & 0x000000FF);
+    }
+    else if (tam == 2) { //w
+        Memoria[DireccionFisica]= (valor & 0x0000FF00)>>8;
+        Memoria[DireccionFisica+1]= (valor & 0x000000FF);
+    } else if (tam == 3) { //b
+        Memoria[DireccionFisica]= (valor & 0x000000FF);
+    }
     Registros[0]= (Registros[aux] & 0x00FF0000) | (Registro & 0x0000FFFF);
     Registros[1]= 0x00040000 | (DireccionFisica & 0x0000FFFF);
     Registros[2]= valor;
@@ -478,7 +497,7 @@ void PUSH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8
     int seg = (Registros[7] & 0xFFFF0000) >> 16;
     int offset = Registros[7] & 0x0000FFFF;
     int base = TablaSegmentos[seg][0];
-    int limite = TablaSegmentos[seg][1];
+    int limite = TablaSegmentos[seg][1] + TablaSegmentos[seg][0];
     int direccionFisica = base + offset;
     if (direccionFisica < base || direccionFisica + 3 > limite) {
         printf("STACK OVERFLOW");
@@ -486,7 +505,7 @@ void PUSH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8
     }
     //Obtener el valor del operando
     //Almacenar en la pila desde los bytes menos significativos, dejando en el tope el byte mas significativo
-    Set_Valor(Memoria,Registros[7] , Registros, Get_Valor(Memoria, Registros[5], Registros, TablaSegmentos),TablaSegmentos);
+    Set_Valor_Pila(Memoria,Registros[7] , Registros, Get_Valor(Memoria, Registros[5], Registros, TablaSegmentos),TablaSegmentos);
 }
 
 
@@ -495,7 +514,7 @@ void POP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
     int seg = (Registros[7] & 0xFFFF0000) >> 16;
     int offset = Registros[7] & 0x0000FFFF;
     int base = TablaSegmentos[seg][0];
-    int limite = TablaSegmentos[seg][1];
+    int limite = TablaSegmentos[seg][1] + TablaSegmentos[seg][0];
     int direccionFisica = base + offset;
 
 
@@ -504,8 +523,7 @@ void POP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
         exit(-5);
     }
 
-    Set_Valor(Memoria, Registros[5], Registros, Get_Valor(Memoria,Registros[7],Registros,TablaSegmentos), TablaSegmentos);
-
+    Set_Valor(Memoria, Registros[5], Registros, Get_Valor_Pila(Memoria,Registros[7],Registros,TablaSegmentos), TablaSegmentos);
     Registros[7] += 4;
 }
 
@@ -515,7 +533,7 @@ void CALL(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[
     int seg = (Registros[7] & 0xFFFF0000) >> 16;
     int offset = Registros[7] & 0x0000FFFF;
     int base = TablaSegmentos[seg][0];
-    int limite = TablaSegmentos[seg][1];
+    int limite = TablaSegmentos[seg][1] + TablaSegmentos[seg][0];
     int direccionFisica = base + offset;
 
     if (direccionFisica < base || direccionFisica + 3 > limite) {
@@ -523,7 +541,7 @@ void CALL(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[
         exit(-5);
     }
 
-    Set_Valor(Memoria,Registros[7] , Registros, Get_Valor(Memoria, Registros[3], Registros, TablaSegmentos),TablaSegmentos);
+    Set_Valor_Pila(Memoria,Registros[7] , Registros, Registros[3],TablaSegmentos);
 
 //JMP SUBRUT
     int oper = Get_Valor(Memoria, Registros[5], Registros, TablaSegmentos);
@@ -531,10 +549,10 @@ void CALL(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[
 }
 
 void RET(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
-int seg = (Registros[7] & 0xFFFF0000) >> 16;
+    int seg = (Registros[7] & 0xFFFF0000) >> 16;
     int offset = Registros[7] & 0x0000FFFF;
     int base = TablaSegmentos[seg][0];
-    int limite = TablaSegmentos[seg][1];
+    int limite = TablaSegmentos[seg][1] + TablaSegmentos[seg][0];
     int direccionFisica = base + offset;
 
 
@@ -543,7 +561,7 @@ int seg = (Registros[7] & 0xFFFF0000) >> 16;
         exit(-5);
     }
 
-    Set_Valor(Memoria, Registros[3], Registros, Get_Valor(Memoria,Registros[7],Registros,TablaSegmentos), TablaSegmentos);
+    Registros[3]= Get_Valor_Pila(Memoria,Registros[7],Registros,TablaSegmentos);
 
     Registros[7] += 4;
 }

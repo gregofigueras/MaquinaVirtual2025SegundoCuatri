@@ -43,6 +43,8 @@ void STOP();
 
 
 void Set_Valor(unsigned char Memoria[N],int Registro,int Registros[32],int valor,short int TablaSegmentos[8][2]);
+void Set_Valor_Pila(unsigned char Memoria[N], int Registro, int Registros[32], int valor, short int TablaSegmentos[8][2]);
+int Get_Valor_Pila(unsigned char Memoria[N], int Registro, int Registros[32], short int TablaSegmentos[8][2]);
 void Set_Valor_Registro(int valor,int Registro, int Registros[32]);
 void Set_Valor_Memoria(unsigned char Memoria[N], int valor,int Registro, int Registros[32],short int TablaSegmentos[8][2]);
 void CrearVmi (char DireccionVmi[256], unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2],short int TamMemoria);

@@ -18,6 +18,7 @@ void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *
 
 
 int main(int argc,char * argv[]) {
+    int i;
     int argvP[100];
     int cuentaPalabra=0;
     int cuentamemoria=0;
@@ -25,18 +26,18 @@ int main(int argc,char * argv[]) {
     unsigned char Memoria[N];
     short int TablaSegmentos[8][2];
     int Registros[32];
-    bool Dissasembler=true, VMX=true;
+    bool Dissasembler=true, VMX=true, Parametros=false;
     char DireccionVmx[256], DireccionVmi[256];
-    strcpy(DireccionVmx,"sample4.vmx");
-    strcpy(DireccionVmi,"sample1.vmi");
-    for (int i=0; i< 32;i++) //Inicializa Registros
+    strcpy(DireccionVmx,"");
+    strcpy(DireccionVmi,"");
+    for ( i=0; i< 32;i++) //Inicializa Registros
         Registros[i]=-1;
-    for (int i = 1; i < argc; i++) {
-        if (strstr(argv[i], ".vmx") == 0) {
+    for (i = 1; (i < argc) && (!Parametros); i++) {
+        if (strstr(argv[i], ".vmx")) {
             strcpy(DireccionVmx, argv[i]);
             VMX=true;
         }
-        else if (strstr(argv[i], ".vmi") == 0) {
+        else if (strstr(argv[i], ".vmi")) {
             strcpy(DireccionVmi, argv[i]);
         }
         else if (strncmp(argv[i], "m=", 2) == 0) {
@@ -45,33 +46,33 @@ int main(int argc,char * argv[]) {
         else if (strcmp(argv[i], "-d") == 0) { //Dissasembler
             Dissasembler = true;
         }
-        else if (strcmp(argv[i],"-p")==0) { //Parametros
-            char Palabra[200];
-            i++;
-            for (;i<argc;i++) {
-                argvP[cuentaPalabra]=cuentamemoria;
-                strcpy(Palabra, argv[i]);
-                for (int j=0 ;strlen(Palabra) >= j;j++) {
-                    Memoria[cuentamemoria] = Palabra[j];
-                    cuentamemoria++;
-                }
-                cuentaPalabra++;
-            }
-            for (i=0;i<=cuentaPalabra;i++) {
-                Memoria[cuentamemoria]= argvP[i] & 0xFF000000;
-                Memoria[++cuentamemoria]= argvP[i] & 0x00FF0000;
-                Memoria[++cuentamemoria]= argvP[i] & 0x0000FF00;
-                Memoria[++cuentamemoria]= argvP[i] & 0x000000FF;
-                cuentamemoria++;
-            }
-            TablaSegmentos[0][0]=0x0000;
-            TablaSegmentos[0][1]=cuentamemoria;
-            TablaSegmentos[1][0]=cuentamemoria;
+        else if (strcmp(argv[i],"-p")==0) {
+            //Parametros
+            Parametros = true;
         }
     }
+    for (;i<argc;i++) {
+        char Palabra[200];
+        argvP[cuentaPalabra]=cuentamemoria;
+        strcpy(Palabra, argv[i]);
+        for (int j=0 ;strlen(Palabra) >= j;j++) {
+            Memoria[cuentamemoria] = Palabra[j];
+            cuentamemoria++;
+        }
+        cuentaPalabra++;
+    }
+    for (i=0;i<cuentaPalabra;i++) {
+            Memoria[cuentamemoria]= argvP[i] & 0xFF000000;
+            Memoria[cuentamemoria+1]= argvP[i] & 0x00FF0000;
+            Memoria[cuentamemoria+2]= argvP[i] & 0x0000FF00;
+            Memoria[cuentamemoria+3]= argvP[i] & 0x000000FF;
+            cuentamemoria+=4;
+    }
+    TablaSegmentos[0][0]=0x0000;
+    TablaSegmentos[0][1]=cuentamemoria;
     if (VMX) {
         CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos,TamMemoria);
-        CargaPila(Memoria,Registros,TablaSegmentos,cuentamemoria);
+        CargaPila(Memoria,Registros,TablaSegmentos,cuentaPalabra);
     }
     else
         CargaVMI(DireccionVmi, Memoria,Registros,TablaSegmentos,TamMemoria);
@@ -178,7 +179,7 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
             TablaSegmentos[i][1]= TamanoSS;
             Registros[7]= Registros[29] | TamanoSS; // SP = SS:limite
         }
-        int j=TamanoConstS;
+        int j=TablaSegmentos[Registros[26]>>16][0];
         for (i=18; i<TamanoArchivo-TamanoConstS;i++) {
             Memoria[j]=data[i];
             j++;
@@ -230,9 +231,10 @@ void CargaVMI(char NombreArchivo[256], unsigned char Memoria[N], int Registros[3
 void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], char DireccionVmi[256],short int TamMemoria) {;
     int aux,breakpoint=0;
     int direccionFisica=TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][0] + (Registros[3] & 0x0000FFFF);
-    bool jump;
+    bool jump,ret;
     for (;direccionFisica<TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][1]+TablaSegmentos[((Registros[26] & 0xFFFF0000)>>16)][0];) {
         jump = false; // Salto
+        ret=false; //Ret
         aux=Memoria[direccionFisica];
         Set_Instruccion(aux,Registros);  // Mueve IP
         direccionFisica++;
@@ -275,9 +277,11 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
                 break;
             case 13:
                 CALL(Memoria,Registros,TablaSegmentos);
+                jump=true;
                 break;
             case 14:
                 RET();
+                ret=true;
                 break;
             case 15:
                 STOP();
@@ -337,6 +341,10 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
         }
         if (jump) // salto
             direccionFisica = TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][0] + (Registros[3] & 0x0000FFFF);
+        else if (ret) {
+            direccionFisica = TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][1];
+            direccionFisica++;
+        }
         else
             direccionFisica++;
         if (breakpoint==2) {
@@ -432,6 +440,12 @@ void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *
             case 6:
                 strcat(Operando, "[OP2");
                 break;
+            case 7:
+                strcat(Operando, "[SP");
+                break;
+            case 8:
+                strcat(Operando, "[BP");
+                break;
             case 10:
                 strcat(Operando, "[EAX");
                 break;
@@ -460,7 +474,19 @@ void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *
                 strcat(Operando, "[CS");
                 break;
             case 27:
-                strcat(Operando, "[");
+                strcat(Operando, "[DS");
+                break;
+            case 28:
+                strcat(Operando, "[ES");
+                break;
+            case 29:
+                strcat(Operando, "[SS");
+                break;
+            case 30:
+                strcat(Operando, "[KS");
+                break;
+            case 31:
+                strcat(Operando, "[PS");
                 break;
             default:
                 break;
@@ -514,6 +540,12 @@ void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *
                         break;
                     case 6:
                         strcpy(Operando,"OP2");
+                        break;
+                    case 7:
+                        strcpy(Operando,"SP");
+                        break;
+                    case 8:
+                        strcpy(Operando,"BP");
                         break;
                     case 10:
                         if ((Memoria[*PosicionFisica] >> 6 ) == 3)
@@ -599,6 +631,19 @@ void Set_Operando_Dissasembler(char Operando[11],unsigned char Memoria[N], int *
                     case 27:
                         strcpy(Operando,"DS");
                         break;
+                    case 28:
+                        strcpy(Operando,"ES");
+                        break;
+                    case 29:
+                        strcpy(Operando,"DS");
+                        break;
+                    case 30:
+                        strcpy(Operando,"KS");
+                        break;
+                    case 31:
+                        strcpy(Operando,"PS");
+                        break;
+
                 }
                 (*acumulador)=(*acumulador)<<8 | Memoria[(*PosicionFisica)];
             }
@@ -617,29 +662,31 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
     PosicionFisica= TablaSegmentos[Registros[26]>>16][0];
     unsigned char AcumulaCaracteres[256];
     // Imprimir Caracteres Constantes
-    for (int i=TablaSegmentos[(Registros[30] & 0xFFFF0000)>>16][0]; i< TablaSegmentos[(Registros[30]& 0xFFFF0000)>>16][1];i++) {
-        memset(AcumulaCaracteres, 0, sizeof AcumulaCaracteres);
-        CuentaCaracteres=0;
-        acumulador=0;
-        PosicionInstruccion=i;
-        while (Memoria[i]!='\0' && i< TablaSegmentos[(Registros[30]& 0xFFFF0000)>>16][1]) {
-            if (Memoria[i]>=32 && Memoria[i]<=126)
-                AcumulaCaracteres[CuentaCaracteres]=Memoria[i];
-            else
-                AcumulaCaracteres[CuentaCaracteres] = '.';
+    if (Registros[30]!=-1) {
+        for (int i=TablaSegmentos[(Registros[30] & 0xFFFF0000)>>16][0]; i< TablaSegmentos[(Registros[30]& 0xFFFF0000)>>16][1];i++) {
+            memset(AcumulaCaracteres, 0, sizeof AcumulaCaracteres);
+            CuentaCaracteres=0;
+            acumulador=0;
+            PosicionInstruccion=i;
+            while (Memoria[i]!='\0' && i< TablaSegmentos[(Registros[30]& 0xFFFF0000)>>16][1]) {
+                if (Memoria[i]>=32 && Memoria[i]<=126)
+                    AcumulaCaracteres[CuentaCaracteres]=Memoria[i];
+                else
+                    AcumulaCaracteres[CuentaCaracteres] = '.';
 
-            acumulador=(acumulador<<8) | Memoria[i];
-            CuentaCaracteres++;
-            i++;
+                acumulador=(acumulador<<8) | Memoria[i];
+                CuentaCaracteres++;
+                i++;
+            }
+            if (CuentaCaracteres<7)
+                printf("[%04X] %014X | \"%s\" \n",PosicionInstruccion,acumulador,AcumulaCaracteres);
+            else
+                printf("[%04X] %012X.. | \"%s\" \n",PosicionInstruccion,acumulador,AcumulaCaracteres);
         }
-        if (CuentaCaracteres<7)
-            printf("[%04X] %014X | \"%s\" \n",PosicionInstruccion,acumulador,AcumulaCaracteres);
-        else
-            printf("[%04X] %012X.. | \"%s\" \n",PosicionInstruccion,acumulador,AcumulaCaracteres);
     }
     // Imprimir Instrucciones
     while (PosicionFisica<TablaSegmentos[(Registros[26] & 0xFFFF0000)>>16][1]+TablaSegmentos[(Registros[26] & 0xFFFF0000)>>16][0]) {
-        if (PosicionFisica==(EntryPoint & 0x0000FFFF) + TablaSegmentos[(Registros[26] & 0xFFFF0000)>>16][0])
+        if (PosicionFisica==((EntryPoint & 0x0000FFFF) + TablaSegmentos[(Registros[26] & 0xFFFF0000)>>16][0]))
             printf(">");
         PosicionInstruccion=PosicionFisica;
         acumulador=Memoria[PosicionFisica];
@@ -714,18 +761,19 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
 }
 
 void CargaPila (unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int CuentaPalabras) {
-    int DirFisica= TablaSegmentos[Registros[7]>>16][0] + (Registros[7] & 0x0000FFFF);
-    Memoria[--DirFisica]=(Registros[31] & 0x000000FF);
-    Memoria[--DirFisica]= (Registros[31] & 0x0000FF00) >>8;
-    Memoria[--DirFisica]= (Registros[31] & 0x00FF0000) >>16;
-    Memoria[--DirFisica]= (Registros[31] & 0xFF000000) >>24;
-    Memoria[--DirFisica]= (CuentaPalabras & 0x000000FF);
-    Memoria[--DirFisica]= (CuentaPalabras & 0x0000FF00) >>8;
-    Memoria[--DirFisica]= (CuentaPalabras & 0x00FF0000) >>16;
-    Memoria[--DirFisica]= (CuentaPalabras & 0xFF000000) >>24;
-    Memoria[--DirFisica]= (-1 & 0x000000FF);
-    Memoria[--DirFisica]= (-1 & 0x0000FF00) >>8;
-    Memoria[--DirFisica]= (-1 & 0x00FF0000) >>16;
-    Memoria[--DirFisica]= (-1 & 0xFF000000) >>24;
     Registros[7]-=12; // Actualiza SP
+    int DirFisica= TablaSegmentos[Registros[7]>>16][0] + (Registros[7] & 0x0000FFFF);
+    Memoria[DirFisica+11]= (Registros[31] & 0xFF000000) >>24;
+    Memoria[DirFisica+10]=  (Registros[31] & 0x00FF0000) >>16;
+    Memoria[DirFisica+9]= (Registros[31] & 0x0000FF00) >>8;
+    Memoria[DirFisica+8]= (Registros[31] & 0x000000FF);
+    Memoria[DirFisica+7]= (CuentaPalabras & 0xFF000000) >>24;
+    Memoria[DirFisica+6]= (CuentaPalabras & 0x00FF0000) >>16;
+    Memoria[DirFisica+5]= (CuentaPalabras & 0x0000FF00) >>8;
+    Memoria[DirFisica+4]= (CuentaPalabras & 0x000000FF);
+    Memoria[DirFisica+3]= (-1 & 0x000000FF);
+    Memoria[DirFisica+2]= (-1 & 0x0000FF00) >>8;
+    Memoria[DirFisica+1]= (-1 & 0x00FF0000) >>16;
+    Memoria[DirFisica]= (-1 & 0xFF000000) >>24;
+
 }
