@@ -280,7 +280,7 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
                 jump=true;
                 break;
             case 14:
-                RET();
+                RET(Memoria,Registros,TablaSegmentos);
                 ret=true;
                 break;
             case 15:
@@ -342,8 +342,7 @@ void ProcesarInstrucciones(unsigned char Memoria[N], int Registros[32], short in
         if (jump) // salto
             direccionFisica = TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][0] + (Registros[3] & 0x0000FFFF);
         else if (ret) {
-            direccionFisica = TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][1];
-            direccionFisica++;
+            direccionFisica = TablaSegmentos[((Registros[3] & 0xFFFF0000)>>16)][0] + (Registros[3] & 0x0000FFFF);
         }
         else
             direccionFisica++;
@@ -386,11 +385,11 @@ void Set_Operando(unsigned char Memoria[N], int Registros[32], int *direccionFis
        Set_OperandoValor(Memoria,&Registros[5],direccionFisica);
     }
     else {
-        if (Registros[4] <= 8) {  //1 operando
+        if (Registros[4]<14) {  //1 operando
             Set_OperandoValor(Memoria,&Registros[5],direccionFisica);
         }
         else
-            if (Registros[4] == 15) { // 0 Operandos
+            if (Registros[4] >= 14) { // 0 Operandos
                 //No hace nada
             }
     }
