@@ -26,7 +26,7 @@ int main(int argc,char * argv[]) {
     unsigned char Memoria[N];
     short int TablaSegmentos[8][2];
     int Registros[32];
-    bool Dissasembler=true, VMX=true, Parametros=false;
+    bool Dissasembler=false, VMX=false, Parametros=false;
     char DireccionVmx[256], DireccionVmi[256];
     strcpy(DireccionVmx,"");
     strcpy(DireccionVmi,"");
@@ -68,8 +68,10 @@ int main(int argc,char * argv[]) {
             Memoria[cuentamemoria+3]= argvP[i] & 0x000000FF;
             cuentamemoria+=4;
     }
+    if (Parametros){
     TablaSegmentos[0][0]=0x0000;
     TablaSegmentos[0][1]=cuentamemoria;
+    }
     if (VMX) {
         CargarVmx(DireccionVmx,Memoria,Registros,TablaSegmentos,TamMemoria);
         CargaPila(Memoria,Registros,TablaSegmentos,cuentaPalabra);
@@ -202,28 +204,30 @@ void CargaVMI(char NombreArchivo[256], unsigned char Memoria[N], int Registros[3
     unsigned char data[TamanoArchivo];
     fseek(Archivo,0,SEEK_SET);
     fread(data, 1, TamanoArchivo, Archivo);
-    int TamanoMemoria= data[6] <<8 + data[7];
+    int TamanoMemoria= ((data[6] <<8) + data[7]) *1024;
     fclose(Archivo);
     if ((TamanoMemoria)> TamMem)
         printf("Memoria insuficiente");
     int k=8;
     for (i=0; i<32;i++) { // Registros
+        Registros[i]=0;
         for (int j=3; j>=0; j--){
-            Registros[i]=data[k] << j*8;
+            Registros[i]=Registros[i] | data[k] << j*8;
             k++;
         }
     }
     for (i=0; i<8; i++) { //Tabla Segmentos
         for (int j=0; j<2; j++) {
             for (int q=1; q>=0; q--) {
-                TablaSegmentos[i][j]= data[k] << q*8;
+                TablaSegmentos[i][j]= TablaSegmentos[i][j] | data[k] << q*8;
                 k++;
             }
         }
     }
-    i=0;
-    for (k=167; k<TamanoMemoria; k++) { //Carga Memoria
+
+    for (i=0; i<TamanoMemoria; i++) { //Carga Memoria
         Memoria[i]=data[k];
+        k++;
     }
 
 }

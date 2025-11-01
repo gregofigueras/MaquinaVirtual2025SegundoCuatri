@@ -36,16 +36,16 @@ int Get_Valor_Memoria(unsigned char Memoria[N], int Registro, int Registros[32],
     int tam = (Registro & 0x00C00000) >> 22;
     int base=TablaSegmentos[(Registros[aux]&0x00FF0000)>>16][0] + (Registros[aux]&0x0000FFFF);
 
-    int DireccionFisica= base + Registro & 0x0000FFFF;
+    int DireccionFisica= base + (int)(short) (Registro & 0x0000FFFF);
     if (tam==0) {//long
         if (DireccionFisica+3> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1] + TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][0]){
             printf("SF");
             exit(-5);
             }
         if ((Registros[7]>>16) == ((Registros[aux]&0x00FF0000)>>16))
-            return Memoria[DireccionFisica] | (Memoria[DireccionFisica+1]<<8) | (Memoria[DireccionFisica+2]<< 16) | Memoria[DireccionFisica+3]<<24;
+            return Memoria[DireccionFisica+3] | (Memoria[DireccionFisica+2]<<8) | (Memoria[DireccionFisica+1]<< 16) | Memoria[DireccionFisica]<<24;
         else
-            return (Memoria[DireccionFisica]<<24) | (Memoria[DireccionFisica+1]<<16) | (Memoria[DireccionFisica+2]<< 8) | Memoria[DireccionFisica+3];
+            return (Memoria[DireccionFisica+3]) | (Memoria[DireccionFisica+2]<<8) | (Memoria[DireccionFisica+1]<< 16) | Memoria[DireccionFisica]<<24;
     }
     if (tam==2) { //word
         if (DireccionFisica+1> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1] + TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][0]){
@@ -53,7 +53,7 @@ int Get_Valor_Memoria(unsigned char Memoria[N], int Registro, int Registros[32],
             exit(-5);
             }
         if ((Registros[7]>>16) == ((Registros[aux]&0x00FF0000)>>16)){
-            return Memoria[DireccionFisica] | (Memoria[DireccionFisica+1]<<8) ;
+            return Memoria[DireccionFisica]<<8 | (Memoria[DireccionFisica+1]) ;
         }
         else{
             short int valor= (Memoria[DireccionFisica]<<8) | Memoria[DireccionFisica+1];
@@ -121,9 +121,9 @@ void Set_Valor_Memoria(unsigned char Memoria[N],int valor,int Registro, int Regi
     int base=TablaSegmentos[((Registros[aux]&0x00FF0000 )>>16)][0] + (Registros[aux]&0x0000FFFF) ;
     int tam = (Registro & 0x00C00000) >> 22;
     int DireccionFisica= 0;
-    DireccionFisica= base + (Registro & 0x0000FFFF);
+    DireccionFisica= base + (int)(short) (Registro & 0x0000FFFF);
 
-    if (DireccionFisica> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1]+ TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][0])
+    if (DireccionFisica> TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][1] + TablaSegmentos[((Registros[aux]&0x00FF0000)>>16)][0])
         exit(-5);
     if (tam == 0) { //long
         Memoria[DireccionFisica]= (valor & 0xFF000000)>>24;
@@ -595,7 +595,7 @@ void RET(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8]
     }
 
     Registros[3]= Get_Valor_Pila(Memoria,Registros[7],Registros,TablaSegmentos);
-
+    Registros[7] +=4;
 }
 
 void CrearVmi (char DireccionVmi[256], unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2],short int TamMemoria) {
