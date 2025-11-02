@@ -86,15 +86,15 @@ void Set_Valor(unsigned char Memoria[N],int Registro,int Registros[32],int valor
 }
 
 void Set_Valor_Pila(unsigned char Memoria[N], int Registro, int Registros[32], int valor, short int TablaSegmentos[8][2]) {
-    int direccion= TablaSegmentos[(Registro & 0xFF0000)>>16][0] + (int)(short)Registro & 0x00FFFF;
-    Memoria[direccion]= (valor & 0xFF000000)>>24;
+    int direccion= TablaSegmentos[(Registro & 0xFFFF0000)>>16][0] + (int)(short)Registro & 0x0000FFFF;
+    Memoria[direccion]  = (valor & 0xFF000000)>>24;
     Memoria[direccion+1]= (valor & 0x00FF0000)>>16;
     Memoria[direccion+2]= (valor & 0x0000FF00)>>8;
     Memoria[direccion+3]= (valor & 0x000000FF);
 }
 
 int Get_Valor_Pila(unsigned char Memoria[N], int Registro, int Registros[32], short int TablaSegmentos[8][2]){
-    int direccion= TablaSegmentos[(Registro & 0xFF0000)>>16][0] + (int)(short) Registro & 0x00FFFF;
+    int direccion= TablaSegmentos[(Registro & 0xFFFF0000)>>16][0] + (int)(short) Registro & 0x0000FFFF;
     int valor =  (Memoria[direccion+3]) | (Memoria[direccion+2]<<8) | (Memoria[direccion+1]<<16) | Memoria[direccion]<<24;
     return valor;
 }
@@ -526,7 +526,7 @@ void PUSH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8
     Registros[7] -= 4;
     //Si el valor de SP es menor que el valor del registro SS entonces STACK OVERFLOW
     int seg = (Registros[7] & 0xFFFF0000) >> 16;
-    int offset = Registros[7] & 0x0000FFFF;
+    short int offset = Registros[7] & 0x0000FFFF;
     int base = TablaSegmentos[seg][0];
     int limite = TablaSegmentos[seg][1] + TablaSegmentos[seg][0];
     int direccionFisica = base + offset;
@@ -543,7 +543,7 @@ void PUSH(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8
 void POP(unsigned char Memoria[N], int Registros[32],short int TablaSegmentos[8][2]) {
     // Compute segment and offset from SP (SP points to top = most significant byte)
     int seg = (Registros[7] & 0xFFFF0000) >> 16;
-    int offset = Registros[7] & 0x0000FFFF;
+    short int offset = Registros[7] & 0x0000FFFF;
     int base = TablaSegmentos[seg][0];
     int limite = TablaSegmentos[seg][1] + TablaSegmentos[seg][0];
     int direccionFisica = base + offset;

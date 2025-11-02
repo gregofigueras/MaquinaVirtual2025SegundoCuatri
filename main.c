@@ -128,7 +128,9 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
             printf("Memoria insuficiente");
             exit(-5);
         }
+        int TamanoPS = 0;
         if (TablaSegmentos[0][1]) {
+            TamanoPS= TablaSegmentos[0][1];
             Registros[31]= i<<16;
             i++;
         }
@@ -143,7 +145,7 @@ void CargarVmx(char NombreArchivo[256], unsigned char Memoria[N], int Registros[
                 TablaSegmentos[i][1]= TamanoConstS;
             }
             int j=TamanoArchivo-TamanoConstS;
-            for (int i=0; i<TamanoConstS;i++) {
+            for (int i=TamanoPS; i<TamanoConstS+TamanoPS;i++) {
                 Memoria[i]= data[j];
                 j++;
             }
@@ -766,14 +768,14 @@ void Imprimir_Dissasembler(unsigned char Memoria[N], short int TablaSegmentos[8]
 void CargaPila (unsigned char Memoria[N], int Registros[32], short int TablaSegmentos[8][2], int CuentaPalabras) {
     Registros[7]-=12; // Actualiza SP
     int DirFisica= TablaSegmentos[Registros[7]>>16][0] + (Registros[7] & 0x0000FFFF);
-    Memoria[DirFisica+11]= (Registros[31] & 0xFF000000) >>24;
-    Memoria[DirFisica+10]=  (Registros[31] & 0x00FF0000) >>16;
-    Memoria[DirFisica+9]= (Registros[31] & 0x0000FF00) >>8;
-    Memoria[DirFisica+8]= (Registros[31] & 0x000000FF);
-    Memoria[DirFisica+7]= (CuentaPalabras & 0xFF000000) >>24;
-    Memoria[DirFisica+6]= (CuentaPalabras & 0x00FF0000) >>16;
-    Memoria[DirFisica+5]= (CuentaPalabras & 0x0000FF00) >>8;
-    Memoria[DirFisica+4]= (CuentaPalabras & 0x000000FF);
+    Memoria[DirFisica+11]= (Registros[31] & 0x000000FF);
+    Memoria[DirFisica+10]=  (Registros[31] & 0x0000FF00) >>8;
+    Memoria[DirFisica+9]= (Registros[31] & 0x00FF0000) >>16;
+    Memoria[DirFisica+8]= (Registros[31] & 0xFF000000) >>24;
+    Memoria[DirFisica+7]= (CuentaPalabras & 0x000000FF);
+    Memoria[DirFisica+6]= (CuentaPalabras & 0x0000FF00) >>8;
+    Memoria[DirFisica+5]= (CuentaPalabras & 0x00FF0000) >>16;
+    Memoria[DirFisica+4]= (CuentaPalabras & 0xFF000000) >>24;
     Memoria[DirFisica+3]= (-1 & 0x000000FF);
     Memoria[DirFisica+2]= (-1 & 0x0000FF00) >>8;
     Memoria[DirFisica+1]= (-1 & 0x00FF0000) >>16;
